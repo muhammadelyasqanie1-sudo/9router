@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button } from "@/shared/components";
-import { isAnthropicCompatibleProvider, isOpenAICompatibleProvider } from "@/shared/constants/providers";
+import { getProviderAlias, isAnthropicCompatibleProvider, isOpenAICompatibleProvider } from "@/shared/constants/providers";
 
 const STORAGE_KEYS = {
   sessions: "basic-chat.sessions",
@@ -137,6 +137,7 @@ function normalizeLiveModel(model, connection) {
     requestModel,
     name: displayName,
     providerId: connection.provider,
+    modelId: rawId,
     providerName: getProviderLabel(connection),
     source: "live",
   };
@@ -225,6 +226,12 @@ export default function BasicChatPageClient() {
           return;
         }
 
+        const disabledRes = await fetch("/api/models/disabled", { cache: "no-store" }).catch(() => null);
+        const disabledData = disabledRes?.ok
+          ? await disabledRes.json().catch(() => ({}))
+          : {};
+        const disabledByProvider = disabledData.disabled || {};
+
         const providerMap = new Map();
 
         for (const connection of connections) {
@@ -276,7 +283,12 @@ export default function BasicChatPageClient() {
           const providerId = result.connection.provider || result.connection.id;
           const group = providerMap.get(providerId);
           if (!group) continue;
-          group.models.push(...result.models);
+          const providerAlias = getProviderAlias(providerId) || providerId;
+          const disabledIds = new Set([
+            ...(Array.isArray(disabledByProvider[providerId]) ? disabledByProvider[providerId] : []),
+            ...(Array.isArray(disabledByProvider[providerAlias]) ? disabledByProvider[providerAlias] : []),
+          ]);
+          group.models.push(...result.models.filter((model) => !disabledIds.has(model.modelId)));
         }
 
         const normalized = Array.from(providerMap.values())
