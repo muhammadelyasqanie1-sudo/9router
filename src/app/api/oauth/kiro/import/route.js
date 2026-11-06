@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { KiroService } from "@/lib/oauth/services/kiro";
 import { createProviderConnection } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 /**
  * POST /api/oauth/kiro/import
@@ -50,6 +53,16 @@ export async function POST(request) {
       },
       testStatus: "active",
     });
+
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "oauth.connection_import",
+        targetType: "provider_connection", targetId: connection.id,
+        details: { provider: "kiro", authType: connection.authType },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({
       success: true,
