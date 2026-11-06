@@ -259,11 +259,11 @@ export async function proxy(request) {
     }
     if (isPublicLlmApi(pathname)) {
       // Continue to the existing API-key gate below.
-    } else if (pathname.startsWith("/api/") || pathname.startsWith("/dashboard")) {
+    } else if (pathname === "/control-plane" || pathname.startsWith("/api/") || pathname.startsWith("/dashboard")) {
       const actor = await getControlPlaneActor(request);
       if (!actor) {
-        if (pathname.startsWith("/dashboard")) {
-          return NextResponse.redirect(new URL("/login", request.url));
+        if (pathname.startsWith("/dashboard") || pathname === "/control-plane") {
+          return NextResponse.redirect(new URL("/login?next=%2Fcontrol-plane", request.url));
         }
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
@@ -276,6 +276,7 @@ export async function proxy(request) {
       if (!actorHasPermission(actor, permission)) {
         return NextResponse.json({ error: "Forbidden", requiredPermission: permission }, { status: 403 });
       }
+      if (pathname === "/control-plane") return NextResponse.redirect(new URL("/dashboard/admin", request.url));
       return NextResponse.next();
     }
   }
