@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getComboById, updateCombo, deleteCombo, getComboByName } from "@/lib/localDb";
 import { resetComboRotation } from "open-sse/services/combo.js";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
@@ -15,6 +18,16 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Combo not found" }, { status: 404 });
     }
     
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "routing.combos.update",
+        targetType: "combo", targetId: id,
+        details: { previousName: prev?.name || null, name: combo.name, changedFields: Object.keys(body) },
+        clientIp: getClientIp(request),
+      });
+    }
+
     return NextResponse.json(combo);
   } catch (error) {
     console.log("Error fetching combo:", error);
@@ -73,6 +86,16 @@ export async function DELETE(request, { params }) {
 
     if (prev?.name) resetComboRotation(prev.name);
     
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "routing.combos.delete",
+        targetType: "combo", targetId: id,
+        details: { name: prev?.name || null },
+        clientIp: getClientIp(request),
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.log("Error deleting combo:", error);
