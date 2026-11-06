@@ -65,7 +65,7 @@ export default function Sidebar({ onClose }) {
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) {
-          setShowControlPlaneAdmin(data?.controlPlaneMode === true && data?.controlPlaneRole === "superadmin");
+          setShowControlPlaneAdmin(data?.controlPlaneMode === true && (data?.controlPlaneRole === "superadmin" || (Array.isArray(data?.controlPlanePermissions) && data.controlPlanePermissions.includes("dashboard:access"))));
         }
       })
       .catch(() => { if (!cancelled) setShowControlPlaneAdmin(false); });
