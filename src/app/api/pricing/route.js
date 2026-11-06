@@ -12,15 +12,6 @@ import { getClientIp } from "@/lib/auth/loginLimiter";
 export async function GET() {
   try {
     const pricing = await getPricing();
-    const actor = await getControlPlaneActor(request);
-    if (actor) {
-      await writeControlPlaneAuditEvent({
-        actorId: actor.id, actorEmail: actor.email, action: "pricing.reset",
-        targetType: "pricing", targetId: provider ? (model ? `${provider}/${model}` : provider) : "global",
-        details: { scope: provider ? (model ? "model" : "provider") : "global" },
-        clientIp: getClientIp(request),
-      });
-    }
     return NextResponse.json(pricing);
   } catch (error) {
     console.error("Error fetching pricing:", error);
@@ -129,6 +120,15 @@ export async function DELETE(request) {
     }
 
     const pricing = await getPricing();
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "pricing.reset",
+        targetType: "pricing", targetId: provider ? (model ? `${provider}/${model}` : provider) : "global",
+        details: { scope: provider ? (model ? "model" : "provider") : "global" },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json(pricing);
   } catch (error) {
     console.error("Error resetting pricing:", error);
