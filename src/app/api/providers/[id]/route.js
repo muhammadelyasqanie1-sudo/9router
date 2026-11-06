@@ -190,6 +190,13 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
 
+    // Capture non-secret metadata before deletion so the audit event can be
+    // written after the connection is removed. Never read or log credentials.
+    const existing = await getProviderConnectionById(id);
+    if (!existing) {
+      return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+    }
+
     const deleted = await deleteProviderConnection(id);
     if (!deleted) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
