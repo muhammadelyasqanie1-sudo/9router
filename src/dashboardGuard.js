@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, validateApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
-import { isControlPlaneMode, getControlPlaneActor, actorHasPermission, requiredControlPlanePermission } from "@/lib/auth/controlPlaneAccess";
+import { isControlPlaneMode, getControlPlaneActor, actorHasPermission, requiredControlPlanePermission, isSuperadminOnlyControlPlaneRoute } from "@/lib/auth/controlPlaneAccess";
 import { hasTrustedPeerHeaders } from "@/lib/auth/trustedPeer";
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
@@ -266,6 +266,9 @@ export async function proxy(request) {
           return NextResponse.redirect(new URL("/login", request.url));
         }
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (isSuperadminOnlyControlPlaneRoute(pathname) && actor.role !== "superadmin") {
+        return NextResponse.json({ error: "Superadministrator required" }, { status: 403 });
       }
       const permission = pathname.startsWith("/dashboard")
         ? "dashboard:access"
