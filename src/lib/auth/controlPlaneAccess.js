@@ -5,8 +5,7 @@ export function isControlPlaneMode() {
   return process.env.AFG_AI_CONTROL_PLANE === "true";
 }
 
-export async function getControlPlaneActor(request) {
-  const token = request.cookies.get("auth_token")?.value;
+export async function getControlPlaneActorFromToken(token) {
   const session = await getDashboardAuthSession(token);
   if (!session?.authenticated) return null;
 
@@ -35,6 +34,10 @@ export async function getControlPlaneActor(request) {
     permissions: user.permissions,
     isBootstrap: false,
   };
+}
+
+export async function getControlPlaneActor(request) {
+  return getControlPlaneActorFromToken(request.cookies.get("auth_token")?.value);
 }
 
 const ADMIN_PERMISSIONS = new Set([
