@@ -141,6 +141,13 @@ const getPageInfo = (pathname) => {
       icon: "extension",
       breadcrumbs: [],
     };
+  if (pathname.startsWith("/dashboard/admin"))
+    return {
+      title: "AFG AI Control Plane",
+      description: "Manage privileged access and administrator activity",
+      icon: "admin_panel_settings",
+      breadcrumbs: [],
+    };
   if (pathname.includes("/endpoint"))
     return {
       title: "Endpoint",
