@@ -2,8 +2,22 @@ import { NextResponse } from "next/server";
 import { createProviderNode, getProviderNodes } from "@/models";
 import { OPENAI_COMPATIBLE_PREFIX, ANTHROPIC_COMPATIBLE_PREFIX, CUSTOM_EMBEDDING_PREFIX } from "@/shared/constants/providers";
 import { generateId } from "@/shared/utils";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 export const dynamic = "force-dynamic";
+
+async function auditProviderNode(request, node) {
+  const actor = await getControlPlaneActor(request);
+  if (!actor) return;
+  await writeControlPlaneAuditEvent({
+    actorId: actor.id, actorEmail: actor.email, action: "provider_nodes.create",
+    targetType: "provider_node", targetId: node.id,
+    details: { name: node.name, type: node.type, prefix: node.prefix },
+    clientIp: getClientIp(request),
+  });
+}
 
 const OPENAI_COMPATIBLE_DEFAULTS = {
   baseUrl: "https://api.openai.com/v1",
@@ -58,6 +72,9 @@ export async function POST(request) {
         baseUrl: (baseUrl || OPENAI_COMPATIBLE_DEFAULTS.baseUrl).trim(),
         name: name.trim(),
       });
+      await auditProviderNode(request, node);
+      await auditProviderNode(request, node);
+      await auditProviderNode(request, node);
       return NextResponse.json({ node }, { status: 201 });
     }
 
