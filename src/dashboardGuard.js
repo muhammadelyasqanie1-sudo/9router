@@ -223,7 +223,7 @@ export async function proxy(request) {
     const publicControlPlanePaths = new Set([
       "/api/health", "/api/init", "/api/locale",
       "/api/auth/login", "/api/auth/logout", "/api/auth/status",
-      "/api/settings/require-login", "/api/version",
+      "/api/version",
     ]);
     if (pathname.startsWith("/api/") && publicControlPlanePaths.has(pathname)) {
       return NextResponse.next();
