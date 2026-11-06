@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProviderConnection } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 import { decodeXaiIdTokenEmail, extractEmailFromAccessToken } from "@/lib/oauth/providerHelpers";
 
 /**
@@ -106,6 +109,16 @@ export async function POST(request) {
       results.push({ index: i, ok: false, error: err.message });
     }
   }
+
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "oauth.connection_import",
+        targetType: "provider_connection", targetId: connection.id,
+        details: { provider: "grok-cli", authType: "oauth" },
+        clientIp: getClientIp(request),
+      });
+    }
 
   return NextResponse.json({
     total: accounts.length,
