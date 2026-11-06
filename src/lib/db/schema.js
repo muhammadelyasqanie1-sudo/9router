@@ -155,7 +155,7 @@ export const TABLES = {
       "CREATE INDEX IF NOT EXISTS idx_rd_model ON requestDetails(model)",
       "CREATE INDEX IF NOT EXISTS idx_rd_conn ON requestDetails(connectionId)",
     ],
-  },,
+  },
   controlPlaneUsers: {
     columns: {
       id: "TEXT PRIMARY KEY",
