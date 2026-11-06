@@ -37,3 +37,10 @@ The bridge also exposes a user list and a restricted status mutation:
 - Suspension revokes active AFG AI sessions. The backend prevents self-suspension, protects the last active administrator and superadmin, and prevents staff from changing administrator accounts.
 
 This does not yet support role assignment, account deletion, password resets, or subscription operations.
+
+## Subscription management (manual plan assignment)
+
+- `GET /api/internal/9router/subscriptions` returns active accounts and their latest subscription state, plus enabled Free/Pro plan metadata. Requires `afg-ai:subscriptions:read`.
+- `PATCH /api/internal/9router/subscriptions` accepts `{ userId, planKey }`, where `planKey` is only `free` or `pro`; requires `afg-ai:subscriptions:manage`.
+- The AFG AI backend transactionally cancels previous active/trialing subscriptions, creates the new `admin_manual` subscription, and records the external 9Router actor in the audit metadata. Reassigning the already-active same plan is a no-op.
+- This does not process payments, change plan pricing/limits, or delete historical subscriptions.
