@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordControlPlaneSystemAction } from "@/lib/auth/controlPlaneAudit";
 import { getSettings } from "@/lib/localDb";
 import { startHeadroomProxy } from "@/lib/headroom/process";
 import { DEFAULT_HEADROOM_URL, isLoopbackHeadroomUrl } from "@/lib/headroom/detect";
@@ -14,7 +15,7 @@ function parsePortFromUrl(url) {
   return null;
 }
 
-export async function POST() {
+export async function POST(request) {
   try {
     const settings = await getSettings();
     const url = settings.headroomUrl || DEFAULT_HEADROOM_URL;
@@ -27,6 +28,7 @@ export async function POST() {
       codeAware: settings.headroomCodeAware === true,
       kompress: settings.headroomKompress !== false,
     });
+    await recordControlPlaneSystemAction(request, { action: "system.headroom.start", targetType: "headroom_proxy" });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     const status = error.code === "NOT_INSTALLED" ? 400 : 500;
