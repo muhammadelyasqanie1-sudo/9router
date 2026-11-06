@@ -68,7 +68,7 @@ const prefixes = {
 };
 
 export function isSuperadminOnlyControlPlaneRoute(pathname) {
-  return pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/");
+  return pathname === "/control-plane" || pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/");
 }
 
 export function requiredControlPlanePermission(pathname, method = "GET") {
