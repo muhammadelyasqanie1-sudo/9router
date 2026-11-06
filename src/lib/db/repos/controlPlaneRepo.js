@@ -6,7 +6,7 @@ export const CONTROL_PLANE_PERMISSIONS = [
   "dashboard:access",
   "providers:read", "providers:manage",
   "routing:read", "routing:manage",
-  "usage:read",
+  "usage:read", "usage:manage",
   "settings:read", "settings:manage",
   "integrations:read", "integrations:manage",
   "system:read", "system:manage",

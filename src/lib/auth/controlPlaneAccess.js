@@ -82,7 +82,7 @@ export function requiredControlPlanePermission(pathname, method = "GET") {
 
   for (const [domain, paths] of Object.entries(prefixes)) {
     if (paths.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"))) {
-      if (domain === "usage") return "usage:read";
+      if (domain === "usage") return isRead ? "usage:read" : "usage:manage";
       if (domain === "system") return isRead ? "system:read" : "system:manage";
       return domain + (isRead ? ":read" : ":manage");
     }

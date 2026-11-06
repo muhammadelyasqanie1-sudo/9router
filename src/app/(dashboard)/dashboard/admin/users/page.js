@@ -9,6 +9,7 @@ const PERMISSIONS = [
   ["routing:read", "View routing and keys"],
   ["routing:manage", "Manage routing and keys"],
   ["usage:read", "View usage"],
+  ["usage:manage", "Reset provider usage and credits"],
   ["settings:read", "View settings"],
   ["settings:manage", "Change settings"],
   ["integrations:read", "View integrations"],

@@ -5,6 +5,7 @@ import { getProviderConnectionById } from "@/lib/localDb";
 import { consumeCodexRateLimitResetCredit, getCodexRateLimitResetCredits } from "open-sse/services/usage.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials } from "../route.js";
+import { recordControlPlaneSystemAction } from "@/lib/auth/controlPlaneAudit";
 
 const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
 
@@ -147,6 +148,14 @@ export async function POST(request, { params }) {
       }
     }
 
+    if (consumeResult.ok) {
+      await recordControlPlaneSystemAction(request, {
+        action: "usage.codex_reset_credit.consume",
+        targetType: "provider_connection",
+        targetId: connection.id,
+        details: { windowsReset: consumeResult.windowsReset || null },
+      });
+    }
     return getResponseForConsumeResult(consumeResult, redeemRequestId);
   } catch (error) {
     const provider = connection?.provider ?? "unknown";
