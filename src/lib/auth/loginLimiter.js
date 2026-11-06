@@ -29,6 +29,13 @@ export async function recordFail(ip) {
   const expiredBeforeAttempt = timestamp - FAIL_WINDOW_MS;
   const bucket = hashBucket(ip);
 
+  // Prune expired buckets on failed-login traffic so the table does not grow
+  // indefinitely from one-off source IPs. Active locks are never removed.
+  db.run(
+    "DELETE FROM loginRateLimits WHERE lastFailAt < ? AND lockUntil <= ?",
+    [expiredBeforeAttempt, timestamp]
+  );
+
   // One atomic statement handles concurrent requests and progressive lockouts.
   // If the prior failure window expired and its lock is over, start a fresh
   // sequence. Otherwise preserve the accumulated lock level.
