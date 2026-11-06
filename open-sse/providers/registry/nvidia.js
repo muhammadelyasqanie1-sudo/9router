@@ -23,7 +23,7 @@ export default {
   },
   // Keep only model IDs documented by NVIDIA's current NIM chat API.
   // Audio, embedding, and other task-specific models must not be routed
-  // through /v1/chat/completions.
+  // through /v1/chat/completions. Retired models are intentionally omitted.
   models: [
     { id: "deepseek-ai/deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash" },
     { id: "deepseek-ai/deepseek-v4-pro", name: "DeepSeek V4 Pro" },
@@ -36,7 +36,6 @@ export default {
     { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B" },
     { id: "qwen/qwen3-next-80b-a3b-instruct", name: "Qwen3 Next 80B Instruct" },
     { id: "meta/llama-3.3-70b-instruct", name: "Llama 3.3 70B Instruct" },
-    { id: "microsoft/phi-4-mini-instruct", name: "Phi-4 Mini Instruct" },
   ],
   serviceKinds: ["llm"],
 };
