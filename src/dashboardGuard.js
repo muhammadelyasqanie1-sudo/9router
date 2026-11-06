@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, validateApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
+import { isControlPlaneMode, getControlPlaneActor, actorHasPermission, requiredControlPlanePermission } from "@/lib/auth/controlPlaneAccess";
 import { hasTrustedPeerHeaders } from "@/lib/auth/trustedPeer";
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
@@ -186,6 +187,7 @@ async function loadSettings() {
 }
 
 async function isAuthenticated(request) {
+  if (isControlPlaneMode()) return !!(await getControlPlaneActor(request));
   if (await hasValidToken(request)) return true;
   const settings = await loadSettings();
   if (settings && settings.requireLogin === false) return true;
@@ -210,6 +212,41 @@ export const __test__ = {
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
+
+  // AFG AI control-plane policy: enforce an active, role-bearing database
+  // identity on every dashboard and management API request. Inference keeps
+  // its existing API-key authentication path.
+  if (isControlPlaneMode()) {
+    if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p)) && !(await canAccessLocalOnlyRoute(request))) {
+      return NextResponse.json({ error: "Local only: CLI token or authenticated local browser required" }, { status: 403 });
+    }
+    const publicControlPlanePaths = new Set([
+      "/api/health", "/api/init", "/api/locale",
+      "/api/auth/login", "/api/auth/logout", "/api/auth/status",
+      "/api/version",
+    ]);
+    if (pathname.startsWith("/api/") && publicControlPlanePaths.has(pathname)) {
+      return NextResponse.next();
+    }
+    if (isPublicLlmApi(pathname)) {
+      // Continue to the existing API-key gate below.
+    } else if (pathname.startsWith("/api/") || pathname.startsWith("/dashboard")) {
+      const actor = await getControlPlaneActor(request);
+      if (!actor) {
+        if (pathname.startsWith("/dashboard")) {
+          return NextResponse.redirect(new URL("/login", request.url));
+        }
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const permission = pathname.startsWith("/dashboard")
+        ? "dashboard:access"
+        : requiredControlPlanePermission(pathname, request.method);
+      if (!actorHasPermission(actor, permission)) {
+        return NextResponse.json({ error: "Forbidden", requiredPermission: permission }, { status: 403 });
+      }
+      return NextResponse.next();
+    }
+  }
 
   // Local-only gate for spawn-capable / host-secret routes.
   if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
@@ -240,7 +277,8 @@ export async function proxy(request) {
 
   // Protect all dashboard routes
   if (pathname.startsWith("/dashboard")) {
-    let requireLogin = true;
+    // Control-plane deployments force login even when the legacy setting is off.
+    let requireLogin = isControlPlaneMode();
     let tunnelDashboardAccess = true;
 
     try {

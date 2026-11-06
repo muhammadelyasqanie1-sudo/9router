@@ -4,12 +4,17 @@ import { getSettings } from "@/lib/localDb";
 import { isOidcConfigured } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { getDashboardAuthSession } from "@/lib/auth/dashboardSession";
+import { getControlPlaneActorFromToken } from "@/lib/auth/controlPlaneAccess";
 
 export async function GET() {
   try {
     const settings = await getSettings();
     const cookieStore = await cookies();
-    const session = await getDashboardAuthSession(cookieStore.get("auth_token")?.value);
+    const token = cookieStore.get("auth_token")?.value;
+    const session = await getDashboardAuthSession(token);
+    const controlPlaneMode = process.env.AFG_AI_CONTROL_PLANE === "true";
+    const controlPlaneActor = controlPlaneMode ? await getControlPlaneActorFromToken(token) : null;
+    const authenticated = controlPlaneMode ? !!controlPlaneActor : !!session;
     const requireLogin = settings.requireLogin !== false;
     const authMode = settings.authMode || "password";
     const ssoType = settings.ssoType || "oidc";
@@ -18,8 +23,9 @@ export async function GET() {
     const samlName = String(session?.samlName || "").trim();
     const samlEmail = String(session?.samlEmail || "").trim();
 
-    const displayName =
-      samlName ||
+    const displayName = controlPlaneMode
+      ? (controlPlaneActor?.displayName || "Control-plane user")
+      : samlName ||
       samlEmail ||
       oidcName ||
       oidcEmail ||
@@ -38,7 +44,10 @@ export async function GET() {
       hasPassword: !!settings.password,
       displayName,
       loginMethod,
-      authenticated: !!session,
+      authenticated,
+      controlPlaneMode,
+      controlPlaneRole: controlPlaneActor?.role || null,
+      controlPlaneEmail: controlPlaneActor?.email || null,
       oidcName: oidcName || null,
       oidcEmail: oidcEmail || null,
       oidcLogin: !!session?.oidc,
@@ -59,6 +68,9 @@ export async function GET() {
       displayName: "Password user",
       loginMethod: "Password",
       authenticated: false,
+      controlPlaneMode: process.env.AFG_AI_CONTROL_PLANE === "true",
+      controlPlaneRole: null,
+      controlPlaneEmail: null,
       oidcName: null,
       oidcEmail: null,
       oidcLogin: false,
