@@ -37,6 +37,10 @@ export async function recordFail(ip) {
      VALUES(?, 1, 0, 0, ?)
      ON CONFLICT(bucketHash) DO UPDATE SET
        failures = CASE
+         WHEN (CASE
+           WHEN loginRateLimits.lastFailAt < ? AND loginRateLimits.lockUntil <= ? THEN 1
+           ELSE loginRateLimits.failures + 1
+         END) >= ? THEN 0
          WHEN loginRateLimits.lastFailAt < ? AND loginRateLimits.lockUntil <= ? THEN 1
          ELSE loginRateLimits.failures + 1
        END,
@@ -60,7 +64,7 @@ export async function recordFail(ip) {
        lastFailAt = ?`,
     [
       bucket, timestamp,
-      expiredBeforeAttempt, timestamp,
+      expiredBeforeAttempt, timestamp, MAX_FAILS_BEFORE_LOCK, expiredBeforeAttempt, timestamp,
       expiredBeforeAttempt, timestamp, MAX_FAILS_BEFORE_LOCK, timestamp,
       expiredBeforeAttempt, timestamp,
       expiredBeforeAttempt, timestamp, MAX_FAILS_BEFORE_LOCK,
