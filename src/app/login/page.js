@@ -3,6 +3,14 @@
 import { useState, useEffect } from "react";
 import { Card, Button, Input } from "@/shared/components";
 
+function getControlPlaneNextPath() {
+  if (typeof window === "undefined") return "/dashboard";
+  const requested = new URLSearchParams(window.location.search).get("next");
+  return requested === "/control-plane" || requested === "/dashboard/admin/users"
+    ? requested
+    : "/dashboard";
+}
+
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -44,7 +52,7 @@ export default function LoginPage() {
           const data = await res.json();
           setControlPlaneMode(data.controlPlaneMode === true);
           if (data.authenticated === true || (data.controlPlaneMode !== true && data.requireLogin === false)) {
-            window.location.assign("/dashboard");
+            window.location.assign(getControlPlaneNextPath());
             return;
           }
           setHasPassword(!!data.hasPassword);
@@ -85,7 +93,7 @@ export default function LoginPage() {
           setMustChange(true);
           return;
         }
-        window.location.assign("/dashboard");
+        window.location.assign(getControlPlaneNextPath());
       } else {
         const data = await res.json();
         setError(data.error || "Invalid password");
@@ -111,7 +119,7 @@ export default function LoginPage() {
         body: JSON.stringify({ currentPassword: password, newPassword }),
       });
       if (res.ok) {
-        window.location.assign("/dashboard");
+        window.location.assign(getControlPlaneNextPath());
       } else {
         const data = await res.json();
         setError(data.error || "Failed to set password");
