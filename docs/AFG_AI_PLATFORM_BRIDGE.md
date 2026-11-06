@@ -26,14 +26,3 @@ The view displays aggregate user counts, today's AI requests/tokens/known cost, 
 This is the first server-to-server data bridge, not the complete AFG AI admin migration. User/subscription actions, feature-flag mutation, announcements, rate limits, sessions, security events, audit details, error export, and remaining AFG AI-specific settings still need separate scoped endpoints and UI. Keep the existing AFG AI admin backend and database intact until each replacement is implemented and verified.
 
 No live deployment, environment-variable change, build, or test execution is part of this source change. The page remains unavailable until both services are configured and deployed.
-
-## Account management (limited scope)
-
-The bridge also exposes a user list and a restricted status mutation:
-
-- `GET /api/internal/9router/users` — returns at most 250 non-deleted accounts and basic activity fields; requires `afg-ai:users:read`.
-- `PATCH /api/internal/9router/users` — accepts only `{ userId, status }`, where status is `active` or `suspended`; requires `afg-ai:users:manage`.
-- The AFG AI backend checks the service bearer credential and the server-forwarded 9Router actor claims. The 9Router API route obtains those claims from its authenticated control-plane session and records its own audit event.
-- Suspension revokes active AFG AI sessions. The backend prevents self-suspension, protects the last active administrator and superadmin, and prevents staff from changing administrator accounts.
-
-This does not yet support role assignment, account deletion, password resets, or subscription operations.
