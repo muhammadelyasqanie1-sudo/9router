@@ -91,6 +91,9 @@ const LOCAL_ONLY_PATHS = [
   "/api/auth/reset-password",
   "/api/headroom/start",
   "/api/headroom/stop",
+  "/api/headroom/extras",
+  "/api/pxpipe/install",
+  "/api/pxpipe/start",
   "/api/headroom/proxy",
 ];
 
@@ -137,6 +140,10 @@ export function isLocalRequest(request) {
     } catch { return false; }
   }
   return true;
+}
+
+function isLocalOnlyPath(pathname) {
+  return LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p));
 }
 
 function isPublicLlmApi(pathname) {
@@ -208,6 +215,7 @@ export const __test__ = {
   extractApiKey,
   canAccessPublicLlmApi,
   canAccessLocalOnlyRoute,
+  isLocalOnlyPath,
 };
 
 export async function proxy(request) {
@@ -246,7 +254,7 @@ export async function proxy(request) {
   // identity on every dashboard and management API request. Inference keeps
   // its existing API-key authentication path.
   if (isControlPlaneMode()) {
-    if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p)) && !(await canAccessLocalOnlyRoute(request))) {
+    if (isLocalOnlyPath(pathname) && !(await canAccessLocalOnlyRoute(request))) {
       return NextResponse.json({ error: "Local only: CLI token or authenticated local browser required" }, { status: 403 });
     }
     const publicControlPlanePaths = new Set([
@@ -282,7 +290,7 @@ export async function proxy(request) {
   }
 
   // Local-only gate for spawn-capable / host-secret routes.
-  if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
+  if (isLocalOnlyPath(pathname)) {
     if (!(await canAccessLocalOnlyRoute(request))) {
       return NextResponse.json({ error: "Local only: CLI token required" }, { status: 403 });
     }
