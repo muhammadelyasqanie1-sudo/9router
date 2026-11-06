@@ -185,8 +185,15 @@ async function loadSettings() {
   }
 }
 
+// AFG AI control-plane mode must never inherit the legacy optional-login
+// setting: every dashboard and management API request requires a valid session.
+function isControlPlaneMode() {
+  return process.env.AFG_AI_CONTROL_PLANE === "true";
+}
+
 async function isAuthenticated(request) {
   if (await hasValidToken(request)) return true;
+  if (isControlPlaneMode()) return false;
   const settings = await loadSettings();
   if (settings && settings.requireLogin === false) return true;
   return false;
@@ -240,7 +247,8 @@ export async function proxy(request) {
 
   // Protect all dashboard routes
   if (pathname.startsWith("/dashboard")) {
-    let requireLogin = true;
+    // Control-plane deployments force login even when the legacy setting is off.
+    let requireLogin = isControlPlaneMode();
     let tunnelDashboardAccess = true;
 
     try {
