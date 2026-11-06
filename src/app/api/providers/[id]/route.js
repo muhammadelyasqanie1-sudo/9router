@@ -163,6 +163,20 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateProviderConnection(id, updateData);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "providers.update",
+        targetType: "provider_connection", targetId: id,
+        details: {
+          provider: existing.provider,
+          changedFields: Object.keys(updateData).filter((key) => key !== "apiKey" && key !== "providerSpecificData"),
+          credentialChanged: !!apiKey,
+          providerSettingsChanged: !!providerSpecificData,
+        },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ connection: toProviderConnectionResponse(updated) });
   } catch (error) {
