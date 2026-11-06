@@ -187,8 +187,8 @@ async function loadSettings() {
 }
 
 async function isAuthenticated(request) {
+  if (isControlPlaneMode()) return !!(await getControlPlaneActor(request));
   if (await hasValidToken(request)) return true;
-  if (isControlPlaneMode()) return false;
   const settings = await loadSettings();
   if (settings && settings.requireLogin === false) return true;
   return false;
