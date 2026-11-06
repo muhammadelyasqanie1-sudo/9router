@@ -47,7 +47,7 @@ const ADMIN_PERMISSIONS = new Set([
   "usage:read",
   "settings:read",
   "integrations:read", "integrations:manage",
-  "afg-ai:read", "afg-ai:manage", "afg-ai:users:read", "afg-ai:users:manage", "afg-ai:subscriptions:read", "afg-ai:subscriptions:manage",
+  "afg-ai:read", "afg-ai:manage", "afg-ai:users:read", "afg-ai:users:manage", "afg-ai:subscriptions:read", "afg-ai:subscriptions:manage", "afg-ai:subscriptions:read", "afg-ai:subscriptions:manage",
 ]);
 
 export function actorHasPermission(actor, permission) {
@@ -79,6 +79,7 @@ export function requiredControlPlanePermission(pathname, method = "GET") {
   if (pathname.startsWith("/api/admin/audit")) return isRead ? "audit:read" : "system:manage";
   // Database export/import exposes every provider credential and can replace the
   // complete router database. Keep it owner-level, even for read-only exports.
+  if (pathname === "/api/afg-ai/subscriptions" || pathname.startsWith("/api/afg-ai/subscriptions/")) return isRead ? "afg-ai:subscriptions:read" : "afg-ai:subscriptions:manage";
   if (pathname === "/api/afg-ai/subscriptions" || pathname.startsWith("/api/afg-ai/subscriptions/")) return isRead ? "afg-ai:subscriptions:read" : "afg-ai:subscriptions:manage";
   if (pathname === "/api/afg-ai/users" || pathname.startsWith("/api/afg-ai/users/")) return isRead ? "afg-ai:users:read" : "afg-ai:users:manage";
   if (pathname === "/api/afg-ai" || pathname.startsWith("/api/afg-ai/")) return isRead ? "afg-ai:read" : "afg-ai:manage";
