@@ -87,6 +87,7 @@ The following foundational controls are now implemented on `afg-ai-control-plane
 - Existing dashboard master-password login remains a break-glass `superadmin` path in control-plane mode. A default-password first login from a remote client remains blocked by the upstream safety check.
 - JWTs for staff carry only the account ID and token version; current role, active state, and permissions are re-read from SQLite on requests. Disable, password reset, role change, or permission change increments token version and revokes existing staff sessions.
 - Server-side path/method permission mapping for management APIs. Unknown management routes are privileged by default. Inference endpoints retain their separate existing API-key authentication.
+- Initial CSRF defense: cookie-authenticated state-changing requests in control-plane mode must include a matching Origin or Referer; cross-site Fetch Metadata is rejected.
 - Superadministrator-only APIs to create, list, update, and disable staff/admin accounts; owner superadmin cannot be created or modified through these APIs.
 - Read-only audit API and durable audit records for successful staff/owner logins and staff account creation, changes, and disablement.
 - Login page supports optional staff email; leaving it blank uses the owner break-glass credential.
@@ -96,7 +97,8 @@ The following foundational controls are now implemented on `afg-ai-control-plane
 
 - The visible account/role/audit screen is available at `/dashboard/admin/users` and is linked in the sidebar for the owner superadministrator.
 - Extend durable audit instrumentation to provider, routing, quota, security, integration, and other privileged mutations.
-- Add an explicit CSRF/origin policy for every cookie-authenticated state-changing route and review all legacy public allow-list entries.
+- A same-origin check is now enforced in control-plane mode for state-changing requests carrying the dashboard auth cookie; cross-site Fetch Metadata is rejected. This is an initial middleware guard, not a substitute for route-level review, reverse-proxy verification, or tests.
+- Review all legacy public allow-list entries and verify the origin guard against the deployed proxy/origin configuration.
 - Decide and implement identity mapping for OIDC/SAML; those providers must not silently acquire elevated roles.
 - Add persistent/distributed login throttling and owner recovery/credential rotation procedures.
 - Review every management API's required scope and verify the mapping against its actual HTTP methods.
