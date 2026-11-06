@@ -48,6 +48,7 @@ export async function GET() {
       controlPlaneMode,
       controlPlaneRole: controlPlaneActor?.role || null,
       controlPlaneEmail: controlPlaneActor?.email || null,
+      controlPlanePermissions: controlPlaneActor?.permissions || [],
       oidcName: oidcName || null,
       oidcEmail: oidcEmail || null,
       oidcLogin: !!session?.oidc,
