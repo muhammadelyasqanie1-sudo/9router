@@ -9,7 +9,7 @@ export const CONTROL_PLANE_PERMISSIONS = [
   "usage:read", "usage:manage",
   "settings:read", "settings:manage",
   "integrations:read", "integrations:manage",
-  "afg-ai:read", "afg-ai:manage",
+  "afg-ai:read", "afg-ai:manage", "afg-ai:users:read", "afg-ai:users:manage",
   "system:read", "system:manage",
   "audit:read",
   "users:read", "users:manage",
