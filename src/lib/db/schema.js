@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -190,6 +190,18 @@ export const TABLES = {
     indexes: [
       "CREATE INDEX IF NOT EXISTS idx_cpa_created ON controlPlaneAudit(createdAt DESC)",
       "CREATE INDEX IF NOT EXISTS idx_cpa_actor ON controlPlaneAudit(actorId, createdAt DESC)",
+    ],
+  },
+  loginRateLimits: {
+    columns: {
+      bucketHash: "TEXT PRIMARY KEY",
+      failures: "INTEGER NOT NULL DEFAULT 0",
+      lockUntil: "INTEGER NOT NULL DEFAULT 0",
+      lockLevel: "INTEGER NOT NULL DEFAULT 0",
+      lastFailAt: "INTEGER NOT NULL DEFAULT 0",
+    },
+    indexes: [
+      "CREATE INDEX IF NOT EXISTS idx_lrl_last_fail ON loginRateLimits(lastFailAt)",
     ],
   },
 };

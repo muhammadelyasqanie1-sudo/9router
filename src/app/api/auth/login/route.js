@@ -22,7 +22,7 @@ function isTunnelRequest(request, settings) {
 export async function POST(request) {
   try {
     const ip = getClientIp(request);
-    const lock = checkLock(ip);
+    const lock = await checkLock(ip);
     if (lock.locked) {
       return NextResponse.json(
         { error: `Too many failed attempts. Try again in ${lock.retryAfter}s. ${RESET_HINT}`, retryAfter: lock.retryAfter, resetHint: RESET_HINT },
@@ -51,15 +51,15 @@ export async function POST(request) {
       const user = await getControlPlaneUserByEmail(email);
       const valid = !!(user && user.isActive && user.passwordHash && await bcrypt.compare(password, user.passwordHash));
       if (!valid) {
-        const { remainingBeforeLock } = recordFail(ip);
-        const postLock = checkLock(ip);
+        const { remainingBeforeLock } = await recordFail(ip);
+        const postLock = await checkLock(ip);
         return NextResponse.json(
           { error: postLock.locked ? "Too many failed attempts. Please try again later." : `Invalid email or password. ${remainingBeforeLock} attempt(s) left before lockout.`, ...(postLock.locked ? { retryAfter: postLock.retryAfter } : {}) },
           { status: postLock.locked ? 429 : 401, headers: postLock.locked ? { "Retry-After": String(postLock.retryAfter), ...NO_STORE_HEADERS } : NO_STORE_HEADERS }
         );
       }
 
-      recordSuccess(ip);
+      await recordSuccess(ip);
       await recordControlPlaneLogin(user.id);
       await writeControlPlaneAuditEvent({
         actorId: user.id, actorEmail: user.email, action: "auth.login",
@@ -96,7 +96,7 @@ export async function POST(request) {
     }
 
     if (isValid) {
-      recordSuccess(ip);
+      await recordSuccess(ip);
 
       // Default password still in use on a remote client → force a password
       // change before the dashboard is exposed remotely (keeps local UX intact).
@@ -143,8 +143,8 @@ export async function POST(request) {
       return NextResponse.json({ success: true, mustChangePassword: false, ...(controlPlaneMode ? { role: "superadmin" } : {}) }, { headers: NO_STORE_HEADERS });
     }
 
-    const { remainingBeforeLock } = recordFail(ip);
-    const postLock = checkLock(ip);
+    const { remainingBeforeLock } = await recordFail(ip);
+    const postLock = await checkLock(ip);
     if (postLock.locked) {
       return NextResponse.json(
         { error: `Too many failed attempts. Try again in ${postLock.retryAfter}s. ${RESET_HINT}`, retryAfter: postLock.retryAfter, resetHint: RESET_HINT },

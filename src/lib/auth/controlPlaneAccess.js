@@ -67,6 +67,10 @@ const prefixes = {
   system: ["/api/cli-tools", "/api/mcp", "/api/tunnel", "/api/shutdown", "/api/version/shutdown", "/api/version/update", "/api/settings/database"],
 };
 
+export function isSuperadminOnlyControlPlaneRoute(pathname) {
+  return pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/");
+}
+
 export function requiredControlPlanePermission(pathname, method = "GET") {
   const isRead = ["GET", "HEAD", "OPTIONS"].includes(String(method).toUpperCase());
   if (pathname.startsWith("/api/admin/users")) return "users:manage";
