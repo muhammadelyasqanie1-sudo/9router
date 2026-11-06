@@ -71,6 +71,9 @@ export function requiredControlPlanePermission(pathname, method = "GET") {
   const isRead = ["GET", "HEAD", "OPTIONS"].includes(String(method).toUpperCase());
   if (pathname.startsWith("/api/admin/users")) return "users:manage";
   if (pathname.startsWith("/api/admin/audit")) return isRead ? "audit:read" : "system:manage";
+  // Database export/import exposes every provider credential and can replace the
+  // complete router database. Keep it owner-level, even for read-only exports.
+  if (pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/")) return "system:manage";
 
   for (const [domain, paths] of Object.entries(prefixes)) {
     if (paths.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"))) {
