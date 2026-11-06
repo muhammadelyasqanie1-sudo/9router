@@ -5,6 +5,9 @@ import {
   getProxyPoolById,
   updateProxyPool,
 } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 function normalizeProxyPoolUpdate(body = {}) {
   const updates = {};
@@ -84,6 +87,15 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateProxyPool(id, normalized.updates);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.update",
+        targetType: "proxy_pool", targetId: id,
+        details: { changedFields: Object.keys(normalized.updates).filter((key) => key !== "proxyUrl") },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ proxyPool: updated });
   } catch (error) {
     console.log("Error updating proxy pool:", error);
@@ -115,6 +127,15 @@ export async function DELETE(request, { params }) {
     }
 
     await deleteProxyPool(id);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.delete",
+        targetType: "proxy_pool", targetId: id,
+        details: { name: existing.name, type: existing.type },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     console.log("Error deleting proxy pool:", error);
