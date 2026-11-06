@@ -4,6 +4,9 @@ import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { AI_MODELS } from "@/shared/constants/config";
 import { getProviderAlias, ALIAS_TO_ID } from "@/shared/constants/providers";
 import { getCapabilitiesForModel } from "open-sse/providers/capabilities.js";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 // GET /api/models - Get models with aliases
 export async function GET() {
@@ -105,6 +108,15 @@ export async function PUT(request) {
 
     // Update alias
     await setModelAlias(model, alias);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "routing.model_alias.update",
+        targetType: "model_alias", targetId: model,
+        details: { model, alias },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ success: true, model, alias });
   } catch (error) {

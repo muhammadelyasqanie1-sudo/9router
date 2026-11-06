@@ -3,6 +3,9 @@ import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
 import bcrypt from "bcryptjs";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -77,6 +80,20 @@ export async function PATCH(request) {
     }
 
     const settings = await updateSettings(body);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      const changedFields = Object.keys(body).filter((key) => !["password", "newPassword", "currentPassword", "oidcClientSecret", "mitmSudoEncrypted"].includes(key));
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "settings.update",
+        targetType: "settings", targetId: "global",
+        details: {
+          changedFields,
+          passwordChanged: !!body.password,
+          oidcSecretChanged: Object.prototype.hasOwnProperty.call(body, "oidcClientSecret"),
+        },
+        clientIp: getClientIp(request),
+      });
+    }
 
     // Apply outbound proxy settings immediately (no restart required)
     if (
