@@ -26,13 +26,10 @@ export default function AfgAiSubscriptionsPage() {
       if (!response.ok) throw new Error(data.error || "Unable to load AFG AI subscriptions.");
       setSubscriptions(Array.isArray(data.subscriptions) ? data.subscriptions : []);
       setPlans(Array.isArray(data.plans) ? data.plans : []);
-      setSelectedPlans((previous) => {
-        const next = { ...previous };
-        for (const row of data.subscriptions || []) {
-          if (!next[row.user_id]) next[row.user_id] = ["free", "pro"].includes(row.plan_key) ? row.plan_key : "free";
-        }
-        return next;
-      });
+      setSelectedPlans(Object.fromEntries((data.subscriptions || []).map((row) => [
+        row.user_id,
+        ["free", "pro"].includes(row.plan_key) ? row.plan_key : "free",
+      ])));
     } catch (err) {
       setSubscriptions([]);
       setPlans([]);
