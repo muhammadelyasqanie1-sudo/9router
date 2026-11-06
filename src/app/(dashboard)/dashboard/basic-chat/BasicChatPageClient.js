@@ -116,6 +116,12 @@ function normalizeLiveModel(model, connection) {
   const rawId = typeof model === "string" ? model : model?.id || model?.name || model?.model || "";
   if (!rawId) return null;
 
+  // System One entries are internal routing/classification models, not
+  // user-facing chat models. Sending them through /chat/completions returns
+  // ModelProtocolUnsupported, so never expose them in the chat picker.
+  const modelKind = typeof model === "object" ? (model?.kind || model?.type) : null;
+  if (modelKind === "systemone") return null;
+
   const displayName = typeof model === "string"
     ? model
     : model?.name || model?.displayName || rawId;
