@@ -143,7 +143,7 @@ export function isLocalRequest(request) {
 }
 
 function isLocalOnlyPath(pathname) {
-  return isLocalOnlyPath(pathname);
+  return LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p));
 }
 
 function isPublicLlmApi(pathname) {
