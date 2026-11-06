@@ -5,6 +5,8 @@ import { Card, Button, Input } from "@/shared/components";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [controlPlaneMode, setControlPlaneMode] = useState(false);
   const [error, setError] = useState("");
   const [resetHint, setResetHint] = useState("");
   const [retryAfter, setRetryAfter] = useState(0);
@@ -40,7 +42,8 @@ export default function LoginPage() {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated === true || data.requireLogin === false) {
+          setControlPlaneMode(data.controlPlaneMode === true);
+          if (data.authenticated === true || (data.controlPlaneMode !== true && data.requireLogin === false)) {
             window.location.assign("/dashboard");
             return;
           }
@@ -73,7 +76,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, ...(controlPlaneMode && email.trim() ? { email: email.trim() } : {}) }),
       });
 
       if (res.ok) {
@@ -128,14 +131,14 @@ export default function LoginPage() {
     window.location.href = "/api/auth/saml/start";
   };
 
-  const isSsoEnabled = ["sso", "oidc", "saml", "both"].includes(authMode);
+  const isSsoEnabled = !controlPlaneMode && ["sso", "oidc", "saml", "both"].includes(authMode);
   const activeSsoType = ssoType || (authMode === "saml" ? "saml" : "oidc");
 
   const samlAvailable = isSsoEnabled && activeSsoType === "saml" && samlConfigured;
   const oidcAvailable = isSsoEnabled && activeSsoType === "oidc" && oidcConfigured;
   const ssoAvailable = samlAvailable || oidcAvailable;
 
-  const passwordAvailable = authMode === "password" || authMode === "both" || !ssoAvailable;
+  const passwordAvailable = controlPlaneMode || authMode === "password" || authMode === "both" || !ssoAvailable;
 
   // Show loading state while checking password
   if (hasPassword === null) {
@@ -157,7 +160,9 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">9Router</h1>
           <p className="text-text-muted">
-            {samlAvailable
+            {controlPlaneMode
+              ? "Sign in with your staff account, or use the owner password"
+              : samlAvailable
               ? "Sign in with SAML 2.0 Single Sign-On"
               : oidcAvailable
               ? "Sign in with your OIDC provider to access the dashboard"
@@ -217,6 +222,18 @@ export default function LoginPage() {
                   </p>
                 )}
 
+                {controlPlaneMode && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium">Staff email (leave blank for owner access)</label>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="username"
+                    />
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-medium">Password</label>
                   <Input
@@ -250,10 +267,12 @@ export default function LoginPage() {
                   {retryAfter > 0 ? `Wait ${retryAfter}s` : "Login"}
                 </Button>
 
-                <p className="text-xs text-center text-text-muted mt-2">
-                  Default password is <code className="bg-sidebar px-1 rounded">123456</code>
-                </p>
-                {hasPassword === false && (
+                {!controlPlaneMode && (
+                  <p className="text-xs text-center text-text-muted mt-2">
+                    Default password is <code className="bg-sidebar px-1 rounded">123456</code>
+                  </p>
+                )}
+                {!controlPlaneMode && hasPassword === false && (
                   <p className="text-xs text-center text-amber-600 dark:text-amber-400">
                     Security risk: no password set. You will be asked to set one when logging in remotely.
                   </p>
