@@ -18,6 +18,12 @@ describe("control-plane permission mapping", () => {
     expect(requiredControlPlanePermission("/api/settings", "PATCH")).toBe("settings:manage");
   });
 
+  it("requires provider management scope for OAuth GET and POST actions", () => {
+    expect(requiredControlPlanePermission("/api/oauth/codex/authorize", "GET")).toBe("providers:manage");
+    expect(requiredControlPlanePermission("/api/oauth/codex/start-proxy", "GET")).toBe("providers:manage");
+    expect(requiredControlPlanePermission("/api/oauth/codex/exchange", "POST")).toBe("providers:manage");
+  });
+
   it("keeps audit reads separate from audit mutations", () => {
     expect(requiredControlPlanePermission("/api/admin/audit", "GET")).toBe("audit:read");
     expect(requiredControlPlanePermission("/api/admin/audit", "POST")).toBe("system:manage");
