@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProviderConnection } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 import { extractCodexAccountInfo } from "@/lib/oauth/providers";
 
 /**
@@ -77,6 +80,16 @@ export async function POST(request) {
       providerSpecificData,
       testStatus: "active",
     });
+
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "oauth.connection_import",
+        targetType: "provider_connection", targetId: connection.id,
+        details: { provider: "codex", authType: connection.authType },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({
       success: true,

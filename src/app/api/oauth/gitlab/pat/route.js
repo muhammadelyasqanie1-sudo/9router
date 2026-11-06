@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProviderConnection } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 const GITLAB_DEFAULT_BASE = "https://gitlab.com";
 
@@ -36,7 +39,7 @@ export async function POST(request) {
     const user = await userRes.json();
     const email = user.email || user.public_email || "";
 
-    await createProviderConnection({
+    const connection = await createProviderConnection({
       provider: "gitlab",
       authType: "oauth",
       accessToken: token.trim(),
@@ -53,6 +56,16 @@ export async function POST(request) {
         authKind: "personal_access_token",
       },
     });
+
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "oauth.connection_import",
+        targetType: "provider_connection", targetId: connection.id,
+        details: { provider: "gitlab", authType: "oauth" },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

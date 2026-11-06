@@ -45,8 +45,23 @@ import {
 } from "@/lib/oauth/utils/server";
 import { detectIdeInstalled } from "@/lib/oauth/utils/ideDetect";
 import { ZED_HOSTED_CONFIG } from "@/lib/oauth/constants/oauth";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
-async function completeXaiManualCode(code, state) {
+async function auditOAuthConnection(request, connection, provider, authType) {
+  const actor = await getControlPlaneActor(request);
+  if (!actor) return;
+  await writeControlPlaneAuditEvent({
+    actorId: actor.id, actorEmail: actor.email, action: "oauth.connection_import",
+    targetType: "provider_connection", targetId: connection.id,
+    details: { provider, authType },
+    clientIp: getClientIp(request),
+  });
+}
+
+
+async function completeXaiManualCode(code, state, request) {
   const session = state ? getXaiSessionStatus(state) : null;
   if (!session) {
     throw new Error("xAI OAuth session not found; restart the login flow and paste the code again");
@@ -70,6 +85,7 @@ async function completeXaiManualCode(code, state) {
         : null,
       testStatus: "active",
     });
+    await auditOAuthConnection(request, connection, "xai", "oauth");
     clearXaiSession(state);
     stopXaiProxy();
     return {
@@ -357,6 +373,7 @@ export async function POST(request, { params }) {
         providerSpecificData: { mcodeDataDir: dataDir },
         testStatus: "active",
       });
+      await auditOAuthConnection(request, connection, provider, "mcode-lease");
       return NextResponse.json({ success: true, connection: { id: connection.id, provider: connection.provider } });
     }
 
@@ -421,6 +438,7 @@ export async function POST(request, { params }) {
             },
             testStatus: "active",
           });
+          await auditOAuthConnection(request, connection, "xiaomi-mimo", "oauth");
           clearXiaomiMimoSession(state);
           stopXiaomiMimoProxy();
           return NextResponse.json({
@@ -457,6 +475,7 @@ export async function POST(request, { params }) {
               : null,
             testStatus: "active",
           });
+          await auditOAuthConnection(request, connection, provider, provider === "windsurf" ? "api_key" : "oauth");
           return NextResponse.json({
             success: true,
             connection: {
@@ -501,6 +520,7 @@ export async function POST(request, { params }) {
           providerSpecificData,
           testStatus: "active",
         });
+        await auditOAuthConnection(request, connection, provider, "access_token");
 
         return NextResponse.json({
           success: true,
@@ -537,6 +557,7 @@ export async function POST(request, { params }) {
           : null,
         testStatus: "active",
       });
+      await auditOAuthConnection(request, connection, provider, "oauth");
 
       return NextResponse.json({ 
         success: true, 
@@ -593,6 +614,7 @@ export async function POST(request, { params }) {
             : null,
           testStatus: "active",
         });
+        await auditOAuthConnection(request, connection, providerId, "oauth");
 
         return NextResponse.json({ 
           success: true, 
@@ -621,7 +643,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: "Manual code only supported for xai" }, { status: 400 });
       }
       const { code, state } = body;
-      const connection = await completeXaiManualCode(String(code || "").trim(), String(state || "").trim());
+      const connection = await completeXaiManualCode(String(code || "").trim(), String(state || "").trim(), request);
       return NextResponse.json({ success: true, connection });
     }
 
