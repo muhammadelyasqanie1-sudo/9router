@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { deleteApiKey, getApiKeyById, updateApiKey } from "@/lib/localDb";
 import { validateKeyAccessInput } from "@/shared/utils/keyAccess.js";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 // GET /api/keys/[id] - Get single key
 export async function GET(request, { params }) {
@@ -38,6 +41,15 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateApiKey(id, updateData);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "api_keys.update",
+        targetType: "api_key", targetId: id,
+        details: { name: existing.name, changedFields: Object.keys(updateData) },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ key: updated });
   } catch (error) {
@@ -51,11 +63,21 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
 
+    const existing = await getApiKeyById(id);
     const deleted = await deleteApiKey(id);
     if (!deleted) {
       return NextResponse.json({ error: "Key not found" }, { status: 404 });
     }
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "api_keys.delete",
+        targetType: "api_key", targetId: id,
+        details: { name: existing?.name || null },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ message: "Key deleted successfully" });
   } catch (error) {
     console.log("Error deleting key:", error);
