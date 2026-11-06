@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordControlPlaneSystemAction } from "@/lib/auth/controlPlaneAudit";
 import { findPython310, getInstalledHeadroomExtras, HEADROOM_COMPRESSION_EXTRAS } from "@/lib/headroom/detect";
 import { installHeadroomExtras, uninstallHeadroomExtras, getInstallLogTail } from "@/lib/headroom/process";
 
@@ -26,6 +27,10 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     const requested = Array.isArray(body?.extras) ? body.extras : [];
     const result = await installHeadroomExtras(requested);
+    await recordControlPlaneSystemAction(req, {
+      action: "system.headroom.extras.install", targetType: "headroom_extras",
+      details: { extras: requested },
+    });
     return NextResponse.json(result);
   } catch (error) {
     const status = error.code === "NOT_INSTALLED" || error.code === "NO_PYTHON" ? 400 : 500;
@@ -38,6 +43,10 @@ export async function DELETE(req) {
     const body = await req.json().catch(() => ({}));
     const requested = Array.isArray(body?.extras) ? body.extras : [];
     const result = await uninstallHeadroomExtras(requested);
+    await recordControlPlaneSystemAction(req, {
+      action: "system.headroom.extras.uninstall", targetType: "headroom_extras",
+      details: { extras: requested },
+    });
     return NextResponse.json(result);
   } catch (error) {
     const status = error.code === "NO_PYTHON" || error.code === "INVALID_EXTRAS" ? 400 : 500;
