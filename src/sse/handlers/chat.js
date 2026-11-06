@@ -28,6 +28,8 @@ import { getProjectIdForConnection } from "open-sse/services/projectId.js";
 import { stripModelContextMarker } from "open-sse/utils/modelMarkers.js";
 import { getKeyAccessContext, enforceKeyAccess, filterAdapterModels } from "../services/keyAccess.js";
 import { resolveSmartChoice } from "../services/systemoneRouter.js";
+import { getDisabledModels } from "@/lib/disabledModelsDb";
+import { getProviderAlias } from "@/shared/constants/providers";
 
 /**
  * Handle chat completion request
@@ -264,6 +266,20 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   }
 
   const { provider, model } = modelInfo;
+
+  // Enforce the administrator's disabled-model policy at the API boundary,
+  // including direct API requests and models reached through combo fallback.
+  const disabledModels = await getDisabledModels();
+  const providerAlias = getProviderAlias(provider) || provider;
+  const disabledIds = new Set([
+    ...(Array.isArray(disabledModels[provider]) ? disabledModels[provider] : []),
+    ...(Array.isArray(disabledModels[providerAlias]) ? disabledModels[providerAlias] : []),
+  ]);
+  const normalizedModelId = String(model || "").replace(/\([^()]+\)\s*$/, "").trim();
+  if (disabledIds.has(normalizedModelId)) {
+    log.warn("CHAT", "Blocked administrator-disabled model", { provider, model: normalizedModelId });
+    return errorResponse(403, "This model is disabled by the administrator");
+  }
 
   // Routing shown in the unified "▶" line (client model → provider/model)
 
