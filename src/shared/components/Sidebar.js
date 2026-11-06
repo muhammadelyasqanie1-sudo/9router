@@ -48,7 +48,6 @@ export default function Sidebar({ onClose }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [shutdownCountdown, setShutdownCountdown] = useState(0);
   const [enableTranslator, setEnableTranslator] = useState(false);
-  const [showControlPlaneAdmin, setShowControlPlaneAdmin] = useState(false);
   const { copied, copy } = useCopyToClipboard(2000);
 
   const INSTALL_CMD = UPDATER_CONFIG.installCmdLatest;
@@ -57,19 +56,6 @@ export default function Sidebar({ onClose }) {
     useSettingsStore.getState().fetchSettings().then((data) => {
       if (data?.enableTranslator) setEnableTranslator(true);
     });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/status", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) {
-          setShowControlPlaneAdmin(data?.controlPlaneMode === true && (data?.controlPlaneRole === "superadmin" || data?.controlPlaneRole === "admin" || (Array.isArray(data?.controlPlanePermissions) && data.controlPlanePermissions.includes("dashboard:access"))));
-        }
-      })
-      .catch(() => { if (!cancelled) setShowControlPlaneAdmin(false); });
-    return () => { cancelled = true; };
   }, []);
 
   // Lazy check for new npm version in background after initial render
@@ -277,24 +263,6 @@ export default function Sidebar({ onClose }) {
                 <span className="text-[13px] font-medium">{item.label}</span>
               </Link>
             ))}
-
-            {showControlPlaneAdmin && (
-              <Link
-                href="/dashboard/admin/users"
-                onClick={onClose}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-1 rounded-lg transition-all group",
-                  pathname.startsWith("/dashboard/admin")
-                    ? "bg-primary/10 text-primary"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text-main"
-                )}
-              >
-                <span className={cn("material-symbols-outlined text-[18px]", pathname.startsWith("/dashboard/admin") ? "fill-1" : "group-hover:text-primary transition-colors")}>
-                  admin_panel_settings
-                </span>
-                <span className="text-[13px] font-medium">AFG AI Control Plane</span>
-              </Link>
-            )}
 
             {/* Debug items (inside System section, before Settings) */}
             {debugItems.map((item) => {
