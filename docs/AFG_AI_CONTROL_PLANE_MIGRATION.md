@@ -123,6 +123,22 @@ A focused unit test file, tests/unit/control-plane-access.test.js, covers the da
 - Implement safe OIDC/SAML identity mapping before enabling those login flows in control-plane mode.
 - Add persistent/distributed login throttling; the current login limiter is an in-memory map and resets on process restart.
 
+## Persistent login throttling and database-owner guard (branch checkpoint)
+
+- Schema version is incremented to 4 and adds a SQLite loginRateLimits table with an indexed lastFailAt field. The migration is additive and follows the existing pre-schema backup path.
+- Dashboard login lockout state now uses an atomic SQLite UPSERT, survives process restarts, preserves progressive lock durations (30 seconds, 2 minutes, 10 minutes, 30 minutes), resets the failure count after each lock, and clears the bucket after a successful login.
+- Only a SHA-256 digest of the IP bucket is stored; raw IP values are not persisted in the limiter table. The existing trusted-peer / TRUST_PROXY source selection remains in place.
+- Expired buckets are pruned during failed-login traffic; active locks are retained. Direct deployments without a trusted peer still share the existing 'unknown' bucket, preserving the anti-spoofing behavior.
+- Login route calls now await the database-backed limiter. Tests were added for lockout, successful reset, and persistence across adapter reinitialization, but were NOT executed.
+- Follow-up review found that system:manage can be granted to scoped staff, so that permission alone was not sufficient to guarantee owner-only database export/import. The control-plane middleware now additionally requires actor.role === superadmin for /api/settings/database and descendants. A focused classification test was added but not run.
+
+### Remaining verification
+
+- Run the new and existing auth/database migration tests in CI or an authorized staging environment; validate adapter behavior on every supported SQLite driver.
+- Confirm schema-version backup/restore behavior on a copy of a real existing database before production rollout.
+- Review reverse-proxy origin configuration and trusted peer IP handling before enabling control-plane mode on the live Railway service.
+- This branch is not deployed. The Railway Docker image and persistent /app/data volume remain unchanged.
+
 ## Acceptance criteria
 
 - No unauthenticated or role-ineligible access to dashboard or management APIs.
