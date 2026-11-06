@@ -10,6 +10,9 @@ import { APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { AI_PROVIDERS, FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import { normalizeProviderId, normalizeProviderSpecificData } from "@/lib/providerNormalization";
 import { toProviderConnectionResponse } from "@/lib/providerConnectionResponse";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 export const dynamic = "force-dynamic";
 
@@ -189,6 +192,16 @@ export async function POST(request) {
       // name collision is refused rather than silently overwriting a key. #4311
       allowOverwrite: body.id ? true : (body.allowOverwrite === true || body.overwrite === true),
     });
+
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "providers.create",
+        targetType: "provider_connection", targetId: newConnection.id,
+        details: { provider, name: connectionName, authType: isWebCookieProvider ? "cookie" : "apikey" },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json(
       { connection: toProviderConnectionResponse(newConnection) },

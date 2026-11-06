@@ -64,7 +64,7 @@ const prefixes = {
   usage: ["/api/usage"],
   settings: ["/api/settings"],
   integrations: ["/api/cloud", "/api/media-providers", "/api/translator"],
-  system: ["/api/cli-tools", "/api/mcp", "/api/tunnel", "/api/shutdown", "/api/version/shutdown", "/api/version/update", "/api/settings/database"],
+  system: ["/api/cli-tools", "/api/mcp", "/api/tunnel", "/api/shutdown", "/api/version/shutdown", "/api/version/update", "/api/settings/database", "/api/headroom", "/api/pxpipe"],
 };
 
 export function isSuperadminOnlyControlPlaneRoute(pathname) {

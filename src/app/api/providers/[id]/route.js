@@ -6,6 +6,9 @@ import {
   deleteProviderConnection,
 } from "@/models";
 import { toProviderConnectionResponse, usesAwsCredentialForm } from "@/lib/providerConnectionResponse";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 function normalizeProxyConfig(body = {}) {
   const hasAnyProxyField =
@@ -160,6 +163,20 @@ export async function PUT(request, { params }) {
     }
 
     const updated = await updateProviderConnection(id, updateData);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "providers.update",
+        targetType: "provider_connection", targetId: id,
+        details: {
+          provider: existing.provider,
+          changedFields: Object.keys(updateData).filter((key) => key !== "apiKey" && key !== "providerSpecificData"),
+          credentialChanged: !!apiKey,
+          providerSettingsChanged: !!providerSpecificData,
+        },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ connection: toProviderConnectionResponse(updated) });
   } catch (error) {
@@ -178,6 +195,15 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Connection not found" }, { status: 404 });
     }
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "providers.delete",
+        targetType: "provider_connection", targetId: id,
+        details: { provider: existing?.provider || null, name: existing?.name || null },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ message: "Connection deleted successfully" });
   } catch (error) {
     console.log("Error deleting connection:", error);
