@@ -72,6 +72,7 @@ export function isSuperadminOnlyControlPlaneRoute(pathname) {
 }
 
 export function requiredControlPlanePermission(pathname, method = "GET") {
+  if (pathname === "/control-plane") return "dashboard:access";
   const isRead = ["GET", "HEAD", "OPTIONS"].includes(String(method).toUpperCase());
   if (pathname.startsWith("/api/admin/users")) return "users:manage";
   if (pathname.startsWith("/api/admin/audit")) return isRead ? "audit:read" : "system:manage";
