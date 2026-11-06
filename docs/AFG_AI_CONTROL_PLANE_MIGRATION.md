@@ -31,7 +31,7 @@ Make this 9Router instance the authoritative management plane for AFG AI while k
 2. Dashboard login currently issues a generic authenticated session; there are no first-class AFG AI roles, scoped staff permissions, or tenant boundaries.
 3. The public allow-list includes operational endpoints such as health/init/version/auth flows; review every route and keep only intentionally public endpoints.
 4. Management APIs share one global dashboard identity. Add explicit role/scope authorization for sensitive operations, not only a hidden dashboard link.
-5. Login throttling is in-memory and resets on process restart. For an internet-facing control plane, add durable or edge-level throttling and audit events.
+5. The original login throttling was in-memory and reset on process restart. The current branch adds durable SQLite lockout state; edge/distributed throttling is still needed if multiple independent router instances are exposed behind one load balancer.
 6. Audit logging for privileged configuration changes must be durable and attributable to a user/staff identity.
 7. Provider credentials and user-level usage must remain server-side. Never expose upstream provider secrets or admin credentials to the AFG AI browser client.
 
@@ -100,7 +100,7 @@ The following foundational controls are now implemented on `afg-ai-control-plane
 - A same-origin check is now enforced in control-plane mode for state-changing requests carrying the dashboard auth cookie; cross-site Fetch Metadata is rejected. This is an initial middleware guard, not a substitute for route-level review, reverse-proxy verification, or tests.
 - Review all legacy public allow-list entries and verify the origin guard against the deployed proxy/origin configuration.
 - Decide and implement identity mapping for OIDC/SAML; those providers must not silently acquire elevated roles.
-- Add persistent/distributed login throttling and owner recovery/credential rotation procedures.
+- Persistent per-instance SQLite login throttling is now implemented on the follow-up branch; add shared edge/distributed throttling before horizontally scaling and document owner recovery/credential rotation procedures.
 - Review every management API's required scope and verify the mapping against its actual HTTP methods.
 - Run static checks, tests, and staging deployment only after authorization to do so; none were run in this work.
 
@@ -121,7 +121,7 @@ A focused unit test file, tests/unit/control-plane-access.test.js, covers the da
 - Review each route handler's own authorization and side effects, including API routes that perform a second password check or accept CLI-token headers.
 - Decide whether headroom and pxpipe operations need dedicated scopes and/or local-only restrictions; retain the current fail-closed system:manage behavior until that review is complete.
 - Implement safe OIDC/SAML identity mapping before enabling those login flows in control-plane mode.
-- Add persistent/distributed login throttling; the current login limiter is an in-memory map and resets on process restart.
+- Add shared edge/distributed login throttling before horizontally scaling; the branch-level SQLite limiter persists across restarts of one instance.
 
 ## Persistent login throttling and database-owner guard (branch checkpoint)
 
