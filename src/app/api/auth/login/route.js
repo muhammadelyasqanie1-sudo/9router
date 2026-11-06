@@ -7,6 +7,7 @@ import { isOidcConfigured } from "@/lib/auth/oidc";
 import { isSamlConfigured } from "@/lib/auth/saml.js";
 import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
 import { isLocalRequest } from "@/dashboardGuard";
+import { getControlPlaneUserByEmail, recordControlPlaneLogin, writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
 
 const RESET_HINT = "Forgot password? Reset to default via 9Router CLI → Settings → Reset Password to Default.";
 const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
@@ -29,12 +30,47 @@ export async function POST(request) {
       );
     }
 
-    const { password } = await request.json();
+    const body = await request.json();
+    const password = typeof body?.password === "string" ? body.password : "";
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const controlPlaneMode = process.env.AFG_AI_CONTROL_PLANE === "true";
     const settings = await getSettings();
 
     // Block login via tunnel/tailscale if dashboard access is disabled
     if (isTunnelRequest(request, settings) && settings.tunnelDashboardAccess !== true) {
       return NextResponse.json({ error: "Dashboard access via tunnel is disabled" }, { status: 403 });
+    }
+
+    // Control-plane staff accounts use individual credentials. The legacy
+    // dashboard password remains a break-glass owner login and is never
+    // distributed to staff accounts.
+    if (controlPlaneMode && email) {
+      if (!password || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+        return NextResponse.json({ error: "Valid email and password are required" }, { status: 400, headers: NO_STORE_HEADERS });
+      }
+      const user = await getControlPlaneUserByEmail(email);
+      const valid = !!(user && user.isActive && user.passwordHash && await bcrypt.compare(password, user.passwordHash));
+      if (!valid) {
+        const { remainingBeforeLock } = recordFail(ip);
+        const postLock = checkLock(ip);
+        return NextResponse.json(
+          { error: postLock.locked ? "Too many failed attempts. Please try again later." : `Invalid email or password. ${remainingBeforeLock} attempt(s) left before lockout.`, ...(postLock.locked ? { retryAfter: postLock.retryAfter } : {}) },
+          { status: postLock.locked ? 429 : 401, headers: postLock.locked ? { "Retry-After": String(postLock.retryAfter), ...NO_STORE_HEADERS } : NO_STORE_HEADERS }
+        );
+      }
+
+      recordSuccess(ip);
+      await recordControlPlaneLogin(user.id);
+      await writeControlPlaneAuditEvent({
+        actorId: user.id, actorEmail: user.email, action: "auth.login",
+        targetType: "user", targetId: user.id, clientIp: ip,
+      });
+      const cookieStore = await cookies();
+      await setDashboardAuthCookie(cookieStore, request, {
+        controlPlaneUserId: user.id,
+        tokenVersion: user.tokenVersion,
+      });
+      return NextResponse.json({ success: true, mustChangePassword: false, role: user.role }, { headers: NO_STORE_HEADERS });
     }
 
     // Default password is '123456' if not set
@@ -88,9 +124,21 @@ export async function POST(request) {
       }
 
       const cookieStore = await cookies();
-      await setDashboardAuthCookie(cookieStore, request);
+      if (controlPlaneMode) {
+        await setDashboardAuthCookie(cookieStore, request, {
+          controlPlaneBootstrap: true,
+          role: "superadmin",
+        });
+        await writeControlPlaneAuditEvent({
+          actorId: "bootstrap", actorEmail: "owner@local",
+          action: "auth.bootstrap_login", targetType: "control_plane",
+          targetId: "root", clientIp: ip,
+        });
+      } else {
+        await setDashboardAuthCookie(cookieStore, request);
+      }
 
-      return NextResponse.json({ success: true, mustChangePassword: false }, { headers: NO_STORE_HEADERS });
+      return NextResponse.json({ success: true, mustChangePassword: false, ...(controlPlaneMode ? { role: "superadmin" } : {}) }, { headers: NO_STORE_HEADERS });
     }
 
     const { remainingBeforeLock } = recordFail(ip);
