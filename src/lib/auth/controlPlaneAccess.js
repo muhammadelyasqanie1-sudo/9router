@@ -45,6 +45,7 @@ const ADMIN_PERMISSIONS = new Set([
   "providers:read", "providers:manage",
   "routing:read", "routing:manage",
   "usage:read",
+  "settings:read",
   "integrations:read", "integrations:manage",
 ]);
 
