@@ -288,6 +288,18 @@ describe("dashboard guard local-only access", () => {
 });
 
 describe("dashboard guard helpers", () => {
+  it("marks package installers and host-side dependency changes as local-only", () => {
+    expect(__test__.isLocalOnlyPath("/api/headroom/extras")).toBe(true);
+    expect(__test__.isLocalOnlyPath("/api/pxpipe/install")).toBe(true);
+    expect(__test__.isLocalOnlyPath("/api/pxpipe/start")).toBe(true);
+  });
+
+  it("keeps read-only PXPIPE status and metrics outside the local-only list", () => {
+    expect(__test__.isLocalOnlyPath("/api/pxpipe/status")).toBe(false);
+    expect(__test__.isLocalOnlyPath("/api/pxpipe/stats")).toBe(false);
+  });
+
+
   it("extracts bearer API keys before x-api-key", () => {
     const apiRequest = request("/v1/chat/completions", {
       authorization: "Bearer bearer-key",
