@@ -45,7 +45,7 @@ export async function POST(request) {
     // dashboard password remains a break-glass owner login and is never
     // distributed to staff accounts.
     if (controlPlaneMode && email) {
-      if (!password || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      if (!password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return NextResponse.json({ error: "Valid email and password are required" }, { status: 400, headers: NO_STORE_HEADERS });
       }
       const user = await getControlPlaneUserByEmail(email);
@@ -76,7 +76,7 @@ export async function POST(request) {
     // Default password is '123456' if not set
     const storedHash = settings.password;
 
-    if (settings.authMode === "sso" || settings.authMode === "saml" || settings.authMode === "oidc") {
+    if (!controlPlaneMode && (settings.authMode === "sso" || settings.authMode === "saml" || settings.authMode === "oidc")) {
       const ssoType = settings.ssoType || (settings.authMode === "saml" ? "saml" : "oidc");
       if (ssoType === "saml" && isSamlConfigured(settings)) {
         return NextResponse.json({ error: "Password login is disabled. Use SAML SSO sign in." }, { status: 403 });
