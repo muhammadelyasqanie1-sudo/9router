@@ -10,6 +10,9 @@ import { APIKEY_PROVIDERS } from "@/shared/constants/config";
 import { AI_PROVIDERS, FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, isCustomEmbeddingProvider } from "@/shared/constants/providers";
 import { normalizeProviderId, normalizeProviderSpecificData } from "@/lib/providerNormalization";
 import { toProviderConnectionResponse } from "@/lib/providerConnectionResponse";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 export const dynamic = "force-dynamic";
 
