@@ -213,6 +213,35 @@ export const __test__ = {
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
+  // Cookie-authenticated control-plane mutations must originate from this
+  // exact origin. SameSite=Lax is defense-in-depth, not the sole CSRF control.
+  // CLI/API-key clients without the dashboard cookie keep their own auth path.
+  if (
+    isControlPlaneMode() &&
+    request.cookies.get("auth_token")?.value &&
+    !["GET", "HEAD", "OPTIONS"].includes(String(request.method).toUpperCase()) &&
+    !isPublicLlmApi(pathname)
+  ) {
+    const expectedOrigin = new URL(request.url).origin;
+    const originHeader = request.headers.get("origin");
+    const refererHeader = request.headers.get("referer");
+    const fetchSite = request.headers.get("sec-fetch-site");
+    let requestOrigin = null;
+    try {
+      if (originHeader) requestOrigin = new URL(originHeader).origin;
+      else if (refererHeader) requestOrigin = new URL(refererHeader).origin;
+    } catch {
+      requestOrigin = null;
+    }
+    if (
+      fetchSite === "cross-site" ||
+      !requestOrigin ||
+      requestOrigin !== expectedOrigin
+    ) {
+      return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
+    }
+  }
+
   // AFG AI control-plane policy: enforce an active, role-bearing database
   // identity on every dashboard and management API request. Inference keeps
   // its existing API-key authentication path.
