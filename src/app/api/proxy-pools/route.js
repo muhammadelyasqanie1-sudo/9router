@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProxyPool, getProviderConnections, getProxyPools } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 function toBoolean(value) {
   if (value === "true") return true;
@@ -85,6 +88,15 @@ export async function POST(request) {
     }
 
     const proxyPool = await createProxyPool(normalized);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.create",
+        targetType: "proxy_pool", targetId: proxyPool.id,
+        details: { name: proxyPool.name, type: proxyPool.type },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ proxyPool }, { status: 201 });
   } catch (error) {
     console.log("Error creating proxy pool:", error);
