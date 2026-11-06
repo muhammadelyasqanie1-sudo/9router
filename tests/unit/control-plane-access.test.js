@@ -18,6 +18,11 @@ describe("control-plane permission mapping", () => {
     expect(requiredControlPlanePermission("/api/settings", "PATCH")).toBe("settings:manage");
   });
 
+  it("uses dedicated AFG AI read and manage scopes", () => {
+    expect(requiredControlPlanePermission("/api/afg-ai/overview", "GET")).toBe("afg-ai:read");
+    expect(requiredControlPlanePermission("/api/afg-ai/settings", "PATCH")).toBe("afg-ai:manage");
+  });
+
   it("requires provider management scope for OAuth GET and POST actions", () => {
     expect(requiredControlPlanePermission("/api/oauth/codex/authorize", "GET")).toBe("providers:manage");
     expect(requiredControlPlanePermission("/api/oauth/codex/start-proxy", "GET")).toBe("providers:manage");
