@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requiredControlPlanePermission } from "../../src/lib/auth/controlPlaneAccess.js";
+import { requiredControlPlanePermission, isSuperadminOnlyControlPlaneRoute } from "../../src/lib/auth/controlPlaneAccess.js";
 
 describe("control-plane permission mapping", () => {
   it("keeps database export and import owner-level for every method", () => {
@@ -15,6 +15,12 @@ describe("control-plane permission mapping", () => {
   it("keeps audit reads separate from audit mutations", () => {
     expect(requiredControlPlanePermission("/api/admin/audit", "GET")).toBe("audit:read");
     expect(requiredControlPlanePermission("/api/admin/audit", "POST")).toBe("system:manage");
+  });
+
+  it("marks database export/import as superadmin-only, not merely system-scoped", () => {
+    expect(isSuperadminOnlyControlPlaneRoute("/api/settings/database")).toBe(true);
+    expect(isSuperadminOnlyControlPlaneRoute("/api/settings/database/backup")).toBe(true);
+    expect(isSuperadminOnlyControlPlaneRoute("/api/settings")).toBe(false);
   });
 
   it("fails closed for unknown management endpoints", () => {
