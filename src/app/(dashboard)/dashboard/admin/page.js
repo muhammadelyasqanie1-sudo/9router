@@ -13,13 +13,6 @@ const ADMIN_ROLE_PERMISSIONS = new Set([
 
 const MANAGEMENT_AREAS = [
   {
-    title: "AFG AI platform",
-    description: "Monitor AFG AI accounts, usage, costs, provider health, integrations, and feature status.",
-    href: "/dashboard/admin/afg-ai",
-    permission: "afg-ai:read",
-    icon: "monitor_heart",
-  },
-  {
     title: "Provider connections",
     description: "Manage AI providers, credentials, model connections, and provider health.",
     href: "/dashboard/providers",
