@@ -91,6 +91,9 @@ const LOCAL_ONLY_PATHS = [
   "/api/auth/reset-password",
   "/api/headroom/start",
   "/api/headroom/stop",
+  "/api/headroom/extras",
+  "/api/pxpipe/install",
+  "/api/pxpipe/start",
   "/api/headroom/proxy",
 ];
 
@@ -137,6 +140,10 @@ export function isLocalRequest(request) {
     } catch { return false; }
   }
   return true;
+}
+
+function isLocalOnlyPath(pathname) {
+  return isLocalOnlyPath(pathname);
 }
 
 function isPublicLlmApi(pathname) {
@@ -208,6 +215,7 @@ export const __test__ = {
   extractApiKey,
   canAccessPublicLlmApi,
   canAccessLocalOnlyRoute,
+  isLocalOnlyPath,
 };
 
 export async function proxy(request) {
