@@ -96,7 +96,7 @@ export async function POST(request) {
     }
 
     if (isValid) {
-      recordSuccess(ip);
+      await recordSuccess(ip);
 
       // Default password still in use on a remote client → force a password
       // change before the dashboard is exposed remotely (keeps local UX intact).
@@ -143,8 +143,8 @@ export async function POST(request) {
       return NextResponse.json({ success: true, mustChangePassword: false, ...(controlPlaneMode ? { role: "superadmin" } : {}) }, { headers: NO_STORE_HEADERS });
     }
 
-    const { remainingBeforeLock } = recordFail(ip);
-    const postLock = checkLock(ip);
+    const { remainingBeforeLock } = await recordFail(ip);
+    const postLock = await checkLock(ip);
     if (postLock.locked) {
       return NextResponse.json(
         { error: `Too many failed attempts. Try again in ${postLock.retryAfter}s. ${RESET_HINT}`, retryAfter: postLock.retryAfter, resetHint: RESET_HINT },
