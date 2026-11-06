@@ -27,6 +27,20 @@ const MANAGEMENT_AREAS = [
     icon: "card_membership",
   },
   {
+    title: "AFG AI feature settings",
+    description: "Enable or disable backend features with provider-readiness checks.",
+    href: "/dashboard/admin/afg-ai/settings",
+    permission: "afg-ai:settings:read",
+    icon: "tune",
+  },
+  {
+    title: "AFG AI announcements",
+    description: "Publish and review platform announcements.",
+    href: "/dashboard/admin/afg-ai/announcements",
+    permission: "afg-ai:announcements:read",
+    icon: "campaign",
+  },
+  {
     title: "AFG AI platform",
     description: "Monitor AFG AI accounts, usage, costs, provider health, integrations, and feature status.",
     href: "/dashboard/admin/afg-ai",
