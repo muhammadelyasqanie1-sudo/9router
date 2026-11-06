@@ -3,7 +3,7 @@
 // pre-change safety backup in migrate.js: when the stored version is lower,
 // one lightweight DB backup is taken before applying schema changes. Forgetting
 // to bump only skips that backup — it does NOT break the additive auto-sync.
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const PRAGMA_SQL = `
 PRAGMA journal_mode = WAL;
@@ -154,6 +154,42 @@ export const TABLES = {
       "CREATE INDEX IF NOT EXISTS idx_rd_provider ON requestDetails(provider)",
       "CREATE INDEX IF NOT EXISTS idx_rd_model ON requestDetails(model)",
       "CREATE INDEX IF NOT EXISTS idx_rd_conn ON requestDetails(connectionId)",
+    ],
+  },,
+  controlPlaneUsers: {
+    columns: {
+      id: "TEXT PRIMARY KEY",
+      email: "TEXT NOT NULL UNIQUE",
+      displayName: "TEXT NOT NULL",
+      passwordHash: "TEXT NOT NULL",
+      role: "TEXT NOT NULL",
+      permissions: "TEXT NOT NULL",
+      isActive: "INTEGER NOT NULL DEFAULT 1",
+      tokenVersion: "INTEGER NOT NULL DEFAULT 0",
+      createdAt: "TEXT NOT NULL",
+      updatedAt: "TEXT NOT NULL",
+      lastLoginAt: "TEXT",
+    },
+    indexes: [
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_cpu_email ON controlPlaneUsers(email)",
+      "CREATE INDEX IF NOT EXISTS idx_cpu_active_role ON controlPlaneUsers(isActive, role)",
+    ],
+  },
+  controlPlaneAudit: {
+    columns: {
+      id: "TEXT PRIMARY KEY",
+      actorId: "TEXT",
+      actorEmail: "TEXT",
+      action: "TEXT NOT NULL",
+      targetType: "TEXT",
+      targetId: "TEXT",
+      details: "TEXT NOT NULL",
+      clientIp: "TEXT",
+      createdAt: "TEXT NOT NULL",
+    },
+    indexes: [
+      "CREATE INDEX IF NOT EXISTS idx_cpa_created ON controlPlaneAudit(createdAt DESC)",
+      "CREATE INDEX IF NOT EXISTS idx_cpa_actor ON controlPlaneAudit(actorId, createdAt DESC)",
     ],
   },
 };
