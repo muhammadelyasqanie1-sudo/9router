@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProviderConnection } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 import { extractCodexAccountInfo } from "@/lib/oauth/providers";
 
 /**
@@ -115,6 +118,16 @@ export async function POST(request) {
       results.push({ index: i, ok: false, error: e.message || "Unknown error" });
       failed++;
     }
+  }
+
+  const actor = await getControlPlaneActor(request);
+  if (actor && success > 0) {
+    await writeControlPlaneAuditEvent({
+      actorId: actor.id, actorEmail: actor.email, action: "oauth.bulk_import",
+      targetType: "provider_connections", targetId: "codex-bulk-import",
+      details: { provider: "codex", success, failed },
+      clientIp: getClientIp(request),
+    });
   }
 
   return NextResponse.json({ success, failed, results });
