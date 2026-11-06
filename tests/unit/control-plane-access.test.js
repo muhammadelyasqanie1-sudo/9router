@@ -18,6 +18,16 @@ describe("control-plane permission mapping", () => {
     expect(requiredControlPlanePermission("/api/settings", "PATCH")).toBe("settings:manage");
   });
 
+  it("uses dedicated AFG AI subscription read and manage scopes", () => {
+    expect(requiredControlPlanePermission("/api/afg-ai/subscriptions", "GET")).toBe("afg-ai:subscriptions:read");
+    expect(requiredControlPlanePermission("/api/afg-ai/subscriptions", "PATCH")).toBe("afg-ai:subscriptions:manage");
+  });
+
+  it("uses dedicated AFG AI subscription read and manage scopes", () => {
+    expect(requiredControlPlanePermission("/api/afg-ai/subscriptions", "GET")).toBe("afg-ai:subscriptions:read");
+    expect(requiredControlPlanePermission("/api/afg-ai/subscriptions", "PATCH")).toBe("afg-ai:subscriptions:manage");
+  });
+
   it("uses dedicated AFG AI user read and manage scopes", () => {
     expect(requiredControlPlanePermission("/api/afg-ai/users", "GET")).toBe("afg-ai:users:read");
     expect(requiredControlPlanePermission("/api/afg-ai/users", "PATCH")).toBe("afg-ai:users:manage");

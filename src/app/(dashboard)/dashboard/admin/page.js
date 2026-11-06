@@ -20,6 +20,13 @@ const MANAGEMENT_AREAS = [
     icon: "manage_accounts",
   },
   {
+    title: "AFG AI subscriptions",
+    description: "Review active accounts and assign the existing Free or Pro subscription plan.",
+    href: "/dashboard/admin/afg-ai/subscriptions",
+    permission: "afg-ai:subscriptions:read",
+    icon: "card_membership",
+  },
+  {
     title: "AFG AI platform",
     description: "Monitor AFG AI accounts, usage, costs, provider health, integrations, and feature status.",
     href: "/dashboard/admin/afg-ai",
