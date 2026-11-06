@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button } from "@/shared/components";
-import { getModelsByProviderId } from "@/shared/constants/models";
 import { isAnthropicCompatibleProvider, isOpenAICompatibleProvider } from "@/shared/constants/providers";
 
 const STORAGE_KEYS = {
@@ -111,18 +110,6 @@ function cloneSession(session) {
 
 function getProviderLabel(connection) {
   return connection?.name || humanize(connection?.provider || connection?.id || "provider");
-}
-
-function normalizeStaticModel(model, connection) {
-  if (!model?.id) return null;
-  return {
-    id: `${connection.provider}/${model.id}`,
-    requestModel: `${connection.provider}/${model.id}`,
-    name: model.name || model.id,
-    providerId: connection.provider,
-    providerName: getProviderLabel(connection),
-    source: "static",
-  };
 }
 
 function normalizeLiveModel(model, connection) {
@@ -258,10 +245,9 @@ export default function BasicChatPageClient() {
           group.providerType = group.providerType || providerType;
           group.connections.push(connection);
 
-          const staticModels = getModelsByProviderId(providerId)
-            .map((model) => normalizeStaticModel(model, connection))
-            .filter(Boolean);
-          group.models.push(...staticModels);
+          // Chat must list only models returned by this connected account's live
+          // provider model endpoint. Registry defaults are not proof of access:
+          // they can include paid, retired, or account-inaccessible models.
         }
 
         const liveResults = await Promise.all(
