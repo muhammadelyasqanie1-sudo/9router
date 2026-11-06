@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProxyPool } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 const DENO_V2_API = "https://api.deno.com/v2";
 
@@ -167,6 +170,15 @@ export async function POST(request) {
       strictProxy: false,
     });
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.deploy.deno",
+        targetType: "proxy_pool", targetId: proxyPool.id,
+        details: { name: projectName, provider: "deno", deploymentCreated: true },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ proxyPool, deployUrl }, { status: 201 });
   } catch (error) {
     console.log("Error deploying Deno Deploy relay:", error);

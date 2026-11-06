@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProxyPool } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 // Relay worker source code deployed to Cloudflare
 const RELAY_WORKER_CODE = `
@@ -137,6 +140,15 @@ export async function POST(request) {
       strictProxy: false,
     });
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.deploy.cloudflare",
+        targetType: "proxy_pool", targetId: proxyPool.id,
+        details: { name: projectName, provider: "cloudflare", deploymentCreated: true },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ proxyPool, deployUrl }, { status: 201 });
   } catch (error) {
     console.log("Error deploying Cloudflare relay:", error);

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createProxyPool } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 import {
   NETLIFY_API,
   NETLIFY_FUNCTION_NAME,
@@ -138,6 +141,15 @@ export async function POST(request) {
       strictProxy: false,
     });
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "proxy_pools.deploy.netlify",
+        targetType: "proxy_pool", targetId: proxyPool.id,
+        details: { name: siteName, provider: "netlify", deploymentCreated: true },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json({ proxyPool, deployUrl: relayUrl }, { status: 201 });
   } catch (error) {
     console.log("Error deploying Netlify relay:", error);

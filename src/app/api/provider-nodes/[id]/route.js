@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 // PUT /api/provider-nodes/[id] - Update provider node
 export async function PUT(request, { params }) {
@@ -73,6 +76,16 @@ export async function PUT(request, { params }) {
       })
     )));
 
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "provider_nodes.update",
+        targetType: "provider_node", targetId: id,
+        details: { previousName: node.name, name: updated.name, type: node.type, prefix: updated.prefix },
+        clientIp: getClientIp(request),
+      });
+    }
+
     return NextResponse.json({ node: updated });
   } catch (error) {
     console.log("Error updating provider node:", error);
@@ -92,6 +105,15 @@ export async function DELETE(request, { params }) {
 
     await deleteProviderConnectionsByProvider(id);
     await deleteProviderNode(id);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "provider_nodes.delete",
+        targetType: "provider_node", targetId: id,
+        details: { name: node.name, type: node.type, deletedConnections: true },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
