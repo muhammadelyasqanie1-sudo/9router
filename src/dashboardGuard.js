@@ -186,12 +186,6 @@ async function loadSettings() {
   }
 }
 
-// AFG AI control-plane mode must never inherit the legacy optional-login
-// setting: every dashboard and management API request requires a valid session.
-function isControlPlaneMode() {
-  return process.env.AFG_AI_CONTROL_PLANE === "true";
-}
-
 async function isAuthenticated(request) {
   if (await hasValidToken(request)) return true;
   if (isControlPlaneMode()) return false;
@@ -223,6 +217,9 @@ export async function proxy(request) {
   // identity on every dashboard and management API request. Inference keeps
   // its existing API-key authentication path.
   if (isControlPlaneMode()) {
+    if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p)) && !(await canAccessLocalOnlyRoute(request))) {
+      return NextResponse.json({ error: "Local only: CLI token or authenticated local browser required" }, { status: 403 });
+    }
     const publicControlPlanePaths = new Set([
       "/api/health", "/api/init", "/api/locale",
       "/api/auth/login", "/api/auth/logout", "/api/auth/status",
