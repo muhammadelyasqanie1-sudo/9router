@@ -104,6 +104,25 @@ The following foundational controls are now implemented on `afg-ai-control-plane
 - Review every management API's required scope and verify the mapping against its actual HTTP methods.
 - Run static checks, tests, and staging deployment only after authorization to do so; none were run in this work.
 
+## Route authorization audit checkpoint (2026-11-06)
+
+Static inventory was performed against the merged master tree at 6d4c4eacc9b7f62bf59afb2247754a5b3c905bb8. It found 177 Next.js API route handlers. This is a source-tree inventory, not a runtime penetration test or a claim that every handler's internal authorization has been independently verified.
+
+- The 24 /api/v1 and /api/v1beta handlers are covered by the public inference-prefix gate and retain their own API-key authentication.
+- The existing domain prefixes cover provider, routing, usage, settings, integration, system, and control-plane admin APIs. Unrecognized management routes fail closed to system:manage.
+- Fifteen route paths are outside the explicit domain-prefix map and therefore rely on that fail-closed fallback: /api/auth/reset-password; seven /api/headroom/* paths; and eight /api/pxpipe/* paths. The reset-password route and selected headroom operations also have local-only restrictions. These routes should receive explicit domain scopes only after their handlers and intended operators are reviewed.
+- Legacy public auth prefixes include OIDC/SAML entry routes, but the stricter control-plane public allow-list currently permits only login/logout/status. OIDC/SAML flows therefore remain unavailable in control-plane mode until identity mapping, state/nonce validation, callback handling, and role assignment are implemented. Do not add them to the public allow-list as a shortcut.
+- /api/settings/database originally matched the broad settings prefix before the system prefix. Its GET exports the full database, including provider credentials, and POST replaces the database. The permission mapper now explicitly requires system:manage for both methods before evaluating broader prefixes.
+
+A focused unit test file, tests/unit/control-plane-access.test.js, covers the database export/import scope, ordinary settings scopes, audit scopes, and fail-closed fallback. It was added but has NOT been executed. The route inventory and this focused fix do not replace full method-by-method review of all 177 handlers.
+
+### Remaining route/authentication work
+
+- Review each route handler's own authorization and side effects, including API routes that perform a second password check or accept CLI-token headers.
+- Decide whether headroom and pxpipe operations need dedicated scopes and/or local-only restrictions; retain the current fail-closed system:manage behavior until that review is complete.
+- Implement safe OIDC/SAML identity mapping before enabling those login flows in control-plane mode.
+- Add persistent/distributed login throttling; the current login limiter is an in-memory map and resets on process restart.
+
 ## Acceptance criteria
 
 - No unauthenticated or role-ineligible access to dashboard or management APIs.
