@@ -59,6 +59,7 @@ export default function AfgAiPlatformPage() {
             <p className="mt-2 max-w-2xl text-sm text-text-muted">Live aggregate data from the AFG AI backend. This page does not expose user records, provider credentials, or service secrets.</p>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/dashboard/admin/afg-ai/users" className="text-xs text-text-muted hover:text-text-main">Manage accounts</Link>
             <Link href="/dashboard/admin" className="text-xs text-text-muted hover:text-text-main">Management center</Link>
             <button onClick={() => void load()} disabled={loading} className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
               {loading ? "Refreshing…" : "Refresh"}

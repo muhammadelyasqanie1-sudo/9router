@@ -47,7 +47,7 @@ const ADMIN_PERMISSIONS = new Set([
   "usage:read",
   "settings:read",
   "integrations:read", "integrations:manage",
-  "afg-ai:read", "afg-ai:manage",
+  "afg-ai:read", "afg-ai:manage", "afg-ai:users:read", "afg-ai:users:manage",
 ]);
 
 export function actorHasPermission(actor, permission) {
@@ -79,6 +79,7 @@ export function requiredControlPlanePermission(pathname, method = "GET") {
   if (pathname.startsWith("/api/admin/audit")) return isRead ? "audit:read" : "system:manage";
   // Database export/import exposes every provider credential and can replace the
   // complete router database. Keep it owner-level, even for read-only exports.
+  if (pathname === "/api/afg-ai/users" || pathname.startsWith("/api/afg-ai/users/")) return isRead ? "afg-ai:users:read" : "afg-ai:users:manage";
   if (pathname === "/api/afg-ai" || pathname.startsWith("/api/afg-ai/")) return isRead ? "afg-ai:read" : "afg-ai:manage";
   if (pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/")) return "system:manage";
   // OAuth routes can start authorization flows and create credentials even when the HTTP method is GET.

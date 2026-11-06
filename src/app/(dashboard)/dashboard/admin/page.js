@@ -13,6 +13,13 @@ const ADMIN_ROLE_PERMISSIONS = new Set([
 
 const MANAGEMENT_AREAS = [
   {
+    title: "AFG AI accounts",
+    description: "Review AFG AI user accounts and manage suspension or reactivation.",
+    href: "/dashboard/admin/afg-ai/users",
+    permission: "afg-ai:users:read",
+    icon: "manage_accounts",
+  },
+  {
     title: "AFG AI platform",
     description: "Monitor AFG AI accounts, usage, costs, provider health, integrations, and feature status.",
     href: "/dashboard/admin/afg-ai",
