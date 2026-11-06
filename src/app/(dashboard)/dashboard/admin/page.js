@@ -3,6 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+const ADMIN_ROLE_PERMISSIONS = new Set([
+  "providers:read", "providers:manage",
+  "routing:read", "routing:manage",
+  "usage:read",
+  "settings:read",
+  "integrations:read", "integrations:manage",
+]);
+
 const MANAGEMENT_AREAS = [
   {
     title: "Provider connections",
@@ -12,18 +20,32 @@ const MANAGEMENT_AREAS = [
     icon: "dns",
   },
   {
-    title: "Routing, models & API keys",
-    description: "Manage model aliases, routing combos, endpoint access, and API keys.",
+    title: "Routing & model aliases",
+    description: "Manage model combinations, routing strategies, and model aliases.",
     href: "/dashboard/combos",
     permission: "routing:read",
     icon: "alt_route",
   },
   {
-    title: "Usage & quota",
-    description: "Inspect request usage, provider consumption, and quota status.",
+    title: "API endpoints & keys",
+    description: "Create and manage API keys, access scopes, and client endpoints.",
+    href: "/dashboard/endpoint",
+    permission: "routing:read",
+    icon: "key",
+  },
+  {
+    title: "Usage analytics",
+    description: "Inspect request volume, provider consumption, and model usage.",
     href: "/dashboard/usage",
     permission: "usage:read",
     icon: "monitoring",
+  },
+  {
+    title: "Quota tracker",
+    description: "Review provider account quotas and reset windows.",
+    href: "/dashboard/quota",
+    permission: "usage:read",
+    icon: "data_usage",
   },
   {
     title: "Proxy infrastructure",
@@ -40,11 +62,25 @@ const MANAGEMENT_AREAS = [
     icon: "terminal",
   },
   {
-    title: "Media & integrations",
-    description: "Configure web search, media providers, translation, and connected services.",
+    title: "PXPipe service",
+    description: "Inspect, install, start, restart, and monitor the PXPipe service.",
+    href: "/dashboard/pxpipe",
+    permission: "system:read",
+    icon: "memory",
+  },
+  {
+    title: "Media providers & web search",
+    description: "Configure image, video, audio, web search, and other media providers.",
     href: "/dashboard/media-providers/web",
     permission: "integrations:read",
     icon: "extension",
+  },
+  {
+    title: "Translation",
+    description: "Manage the translation integration and language tools.",
+    href: "/dashboard/translator",
+    permission: "integrations:read",
+    icon: "translate",
   },
   {
     title: "Application settings",
@@ -74,7 +110,10 @@ export default function AfgAiManagementCenterPage() {
   const allowed = useMemo(() => {
     if (status?.controlPlaneRole === "superadmin") return true;
     const permissions = status?.controlPlanePermissions;
-    return (permission) => Array.isArray(permissions) && (permissions.includes("*") || permissions.includes(permission));
+    return (permission) => (
+      (status?.controlPlaneRole === "admin" && ADMIN_ROLE_PERMISSIONS.has(permission)) ||
+      (Array.isArray(permissions) && (permissions.includes("*") || permissions.includes(permission)))
+    );
   }, [status]);
 
   if (error) {
