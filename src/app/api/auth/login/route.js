@@ -123,16 +123,18 @@ export async function POST(request) {
         );
       }
 
+      if (controlPlaneMode) {
+        await writeControlPlaneAuditEvent({
+          actorId: "bootstrap", actorEmail: "owner@local",
+          action: "auth.bootstrap_login", targetType: "control_plane",
+          targetId: "root", clientIp: ip,
+        });
+      }
       const cookieStore = await cookies();
       if (controlPlaneMode) {
         await setDashboardAuthCookie(cookieStore, request, {
           controlPlaneBootstrap: true,
           role: "superadmin",
-        });
-        await writeControlPlaneAuditEvent({
-          actorId: "bootstrap", actorEmail: "owner@local",
-          action: "auth.bootstrap_login", targetType: "control_plane",
-          targetId: "root", clientIp: ip,
         });
       } else {
         await setDashboardAuthCookie(cookieStore, request);
