@@ -94,7 +94,7 @@ The following foundational controls are now implemented on `afg-ai-control-plane
 
 ### Remaining before Phase 1 can be considered complete
 
-- Add visible user/role/audit management screens inside the dashboard.
+- The visible account/role/audit screen is available at `/dashboard/admin/users` and is linked in the sidebar for the owner superadministrator.
 - Extend durable audit instrumentation to provider, routing, quota, security, integration, and other privileged mutations.
 - Add an explicit CSRF/origin policy for every cookie-authenticated state-changing route and review all legacy public allow-list entries.
 - Decide and implement identity mapping for OIDC/SAML; those providers must not silently acquire elevated roles.
