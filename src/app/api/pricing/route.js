@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPricing, updatePricing, resetPricing, resetAllPricing } from "@/lib/localDb.js";
 import { getDefaultPricing } from "open-sse/providers/pricing.js";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 /**
  * GET /api/pricing
@@ -9,6 +12,15 @@ import { getDefaultPricing } from "open-sse/providers/pricing.js";
 export async function GET() {
   try {
     const pricing = await getPricing();
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "pricing.reset",
+        targetType: "pricing", targetId: provider ? (model ? `${provider}/${model}` : provider) : "global",
+        details: { scope: provider ? (model ? "model" : "provider") : "global" },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json(pricing);
   } catch (error) {
     console.error("Error fetching pricing:", error);
@@ -73,6 +85,17 @@ export async function PATCH(request) {
     }
 
     const updatedPricing = await updatePricing(body);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      const providers = Object.keys(body);
+      const modelCount = Object.values(body).reduce((sum, models) => sum + Object.keys(models || {}).length, 0);
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "pricing.update",
+        targetType: "pricing", targetId: "global",
+        details: { providerCount: providers.length, modelCount },
+        clientIp: getClientIp(request),
+      });
+    }
     return NextResponse.json(updatedPricing);
   } catch (error) {
     console.error("Error updating pricing:", error);
