@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getApiKeys, createApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
+import { getControlPlaneActor } from "@/lib/auth/controlPlaneAccess";
+import { writeControlPlaneAuditEvent } from "@/lib/db/repos/controlPlaneRepo";
+import { getClientIp } from "@/lib/auth/loginLimiter";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,15 @@ export async function POST(request) {
     // Always get machineId from server
     const machineId = await getConsistentMachineId();
     const apiKey = await createApiKey(name, machineId);
+    const actor = await getControlPlaneActor(request);
+    if (actor) {
+      await writeControlPlaneAuditEvent({
+        actorId: actor.id, actorEmail: actor.email, action: "api_keys.create",
+        targetType: "api_key", targetId: apiKey.id,
+        details: { name: apiKey.name },
+        clientIp: getClientIp(request),
+      });
+    }
 
     return NextResponse.json({
       key: apiKey.key,
