@@ -79,6 +79,8 @@ export function requiredControlPlanePermission(pathname, method = "GET") {
   // Database export/import exposes every provider credential and can replace the
   // complete router database. Keep it owner-level, even for read-only exports.
   if (pathname === "/api/settings/database" || pathname.startsWith("/api/settings/database/")) return "system:manage";
+  // OAuth routes can start authorization flows and create credentials even when the HTTP method is GET.
+  if (pathname === "/api/oauth" || pathname.startsWith("/api/oauth/")) return "providers:manage";
 
   for (const [domain, paths] of Object.entries(prefixes)) {
     if (paths.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"))) {
