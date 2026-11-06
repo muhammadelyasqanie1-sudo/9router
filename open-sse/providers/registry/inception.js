@@ -21,11 +21,10 @@ export default {
     validateUrl: "https://api.inceptionlabs.ai/v1/models",
     thinkingFormat: "openai",
   },
+  // Keep the static fallback conservative. The chat model picker uses the
+  // connected account's live /models response, not this registry list.
   models: [
     { id: "mercury-3", name: "Mercury 3" },
-    { id: "mercury-2.5", name: "Mercury 2.5" },
-    { id: "mercury-coder-small", name: "Mercury Coder Small" },
   ],
-  // Permit newly released Mercury model IDs without requiring a router update.
-  passthroughModels: true,
+  passthroughModels: false,
 };
